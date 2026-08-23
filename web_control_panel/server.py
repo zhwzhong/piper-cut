@@ -121,7 +121,21 @@ def parse_target_z_min_mm(value: Any) -> float:
         raise ValueError("target_z_min_mm must be finite")
     if z_min < -150.0 or z_min > 500.0:
         raise ValueError("target_z_min_mm must be within [-150, 500] mm")
+    STATE["target_z_min_mm"] = z_min
     return z_min
+
+
+def clamp_xyz_z_min_mm(xyz_mm: list[float], target_z_min_mm: float | None = None) -> tuple[list[float], bool]:
+    z_min = parse_target_z_min_mm(target_z_min_mm)
+    clamped = [float(value) for value in xyz_mm]
+    if len(clamped) != 3:
+        raise ValueError("xyz_mm must contain x/y/z")
+    if not all(math.isfinite(value) for value in clamped):
+        raise ValueError("x/y/z must be finite numbers")
+    was_clamped = clamped[2] < z_min
+    if was_clamped:
+        clamped[2] = z_min
+    return clamped, was_clamped
 
 
 def parse_segment_mm(value: Any) -> float:
@@ -1148,32 +1162,38 @@ def move_pose_json(
     confirm: str,
     speed: int,
     motion_mode: str,
+    target_z_min_mm: float | None = None,
 ) -> dict[str, Any]:
     if not pose_json.is_file():
         raise ValueError(f"pose json does not exist: {pose_json}")
-    command = [
-        sys.executable,
-        str(ROOT / "04_move_to_probe_tip_pose.py"),
-        "--pose-json",
-        str(pose_json),
-        "--speed-percent",
-        str(int(speed)),
-        "--motion-mode",
-        motion_mode,
-    ]
-    if execute:
-        if confirm != CONFIRM_EXECUTE:
-            raise ValueError(f"motion requires confirm={CONFIRM_EXECUTE}")
-        command.extend(["--execute", "--confirm", CONFIRM_EXECUTE])
-    result = command_result(command, timeout=45)
     pose = json.loads(pose_json.read_text(encoding="utf-8"))
-    return {
-        "ok": result["returncode"] == 0,
-        "pose_json": str(pose_json),
-        "saved_pose": pose,
-        "motion_mode": motion_mode,
-        "result": result,
-    }
+    corrected = pose.get("corrected_probe_tip")
+    if not isinstance(corrected, dict):
+        raise ValueError("pose json has no corrected_probe_tip block")
+    xyz_mm = corrected.get("xyz_mm")
+    rpy_deg = corrected.get("rpy_deg")
+    if not isinstance(xyz_mm, list) or len(xyz_mm) != 3:
+        raise ValueError("pose json corrected_probe_tip.xyz_mm is invalid")
+    if not isinstance(rpy_deg, list) or len(rpy_deg) != 3:
+        raise ValueError("pose json corrected_probe_tip.rpy_deg is invalid")
+    response = move_xyz_rpy_mm(
+        [float(value) for value in xyz_mm],
+        [float(value) for value in rpy_deg],
+        execute,
+        confirm,
+        speed,
+        motion_mode,
+        target_z_min_mm=target_z_min_mm,
+        send_duration=5.0,
+        wait_after_send=1.0,
+    )
+    response.update(
+        {
+            "pose_json": str(pose_json),
+            "saved_pose": pose,
+        }
+    )
+    return response
 
 
 def move_xyz_rpy_mm(
@@ -1184,18 +1204,22 @@ def move_xyz_rpy_mm(
     speed: int,
     motion_mode: str,
     *,
+    target_z_min_mm: float | None = None,
     send_duration: float = 8.0,
     wait_after_send: float = 1.0,
 ) -> dict[str, Any]:
+    requested_xyz_mm = [float(value) for value in xyz_mm]
+    target_xyz_mm, z_clamped = clamp_xyz_z_min_mm(requested_xyz_mm, target_z_min_mm)
+    z_min = parse_target_z_min_mm(target_z_min_mm)
     command = [
         sys.executable,
         str(ROOT / "04_move_to_probe_tip_pose.py"),
         "--x",
-        f"{float(xyz_mm[0]):.6f}",
+        f"{float(target_xyz_mm[0]):.6f}",
         "--y",
-        f"{float(xyz_mm[1]):.6f}",
+        f"{float(target_xyz_mm[1]):.6f}",
         "--z",
-        f"{float(xyz_mm[2]):.6f}",
+        f"{float(target_xyz_mm[2]):.6f}",
         "--unit",
         "mm",
         "--rx",
@@ -1220,7 +1244,10 @@ def move_xyz_rpy_mm(
     result = command_result(command, timeout=max(20.0, send_duration + wait_after_send + 10.0))
     return {
         "ok": result["returncode"] == 0,
-        "target_xyz_mm": xyz_mm,
+        "requested_xyz_mm": requested_xyz_mm,
+        "target_xyz_mm": target_xyz_mm,
+        "target_z_min_mm": z_min,
+        "z_clamped": z_clamped,
         "target_rpy_deg": rpy_deg,
         "motion_mode": motion_mode,
         "result": result,
@@ -1233,11 +1260,12 @@ def move_named_pose(
     confirm: str,
     speed: int,
     motion_mode: str,
+    target_z_min_mm: float | None = None,
 ) -> dict[str, Any]:
     path = saved_pose_path(name)
     if not path.is_file() and pose_slug(name) == "far" and FAR_POSE_JSON.is_file():
         path = FAR_POSE_JSON
-    response = move_pose_json(path, execute, confirm, speed, motion_mode)
+    response = move_pose_json(path, execute, confirm, speed, motion_mode, target_z_min_mm)
     response["pose_name"] = pose_slug(name)
     return response
 
@@ -1248,6 +1276,7 @@ def move_manual_xyz(
     confirm: str,
     speed: int,
     motion_mode: str,
+    target_z_min_mm: float | None = None,
 ) -> dict[str, Any]:
     if len(xyz_mm) != 3:
         raise ValueError("xyz_mm must contain x/y/z")
@@ -1266,6 +1295,7 @@ def move_manual_xyz(
         confirm,
         speed,
         motion_mode,
+        target_z_min_mm=target_z_min_mm,
         send_duration=5.0,
         wait_after_send=1.0,
     )
@@ -1360,30 +1390,22 @@ def move_point(
     confirm: str,
     speed: int,
     motion_mode: str,
+    target_z_min_mm: float | None = None,
 ) -> dict[str, Any]:
     if point_name not in {"start", "end", "mid"}:
         raise ValueError("point_name must be start/end/mid")
     target_json = STATE.get("last_target_json")
     if not target_json:
         raise ValueError("run seam detection before moving to a seam point")
-    command = [
-        sys.executable,
-        str(ROOT / "03_move_to_probe_tip_point.py"),
-        "--point-json",
-        str(target_json),
-        "--point-name",
+    return move_point_from_target_json(
+        Path(str(target_json)),
         point_name,
-        "--speed-percent",
-        str(int(speed)),
-        "--motion-mode",
+        execute,
+        confirm,
+        speed,
         motion_mode,
-    ]
-    if execute:
-        if confirm != CONFIRM_EXECUTE:
-            raise ValueError(f"motion requires confirm={CONFIRM_EXECUTE}")
-        command.extend(["--execute", "--confirm", CONFIRM_EXECUTE])
-    result = command_result(command, timeout=45)
-    return {"ok": result["returncode"] == 0, "motion_mode": motion_mode, "result": result}
+        target_z_min_mm,
+    )
 
 
 def move_point_from_target_json(
@@ -1393,27 +1415,55 @@ def move_point_from_target_json(
     confirm: str,
     speed: int,
     motion_mode: str,
+    target_z_min_mm: float | None = None,
 ) -> dict[str, Any]:
     if point_name not in {"start", "end", "mid"}:
         raise ValueError("point_name must be start/end/mid")
-    command = [
-        sys.executable,
-        str(ROOT / "03_move_to_probe_tip_point.py"),
-        "--point-json",
-        str(target_json),
-        "--point-name",
-        point_name,
-        "--speed-percent",
-        str(int(speed)),
-        "--motion-mode",
+    target_mm = current_target_point_mm_from_path(target_json, point_name)
+    pose_report = read_pose()
+    if not pose_report["ok"]:
+        return pose_report
+    rpy_deg = [float(value) for value in pose_report["pose"]["corrected_probe_tip"]["rpy_deg"]]
+    response = move_xyz_rpy_mm(
+        target_mm,
+        rpy_deg,
+        execute,
+        confirm,
+        speed,
         motion_mode,
-    ]
-    if execute:
-        if confirm != CONFIRM_EXECUTE:
-            raise ValueError(f"motion requires confirm={CONFIRM_EXECUTE}")
-        command.extend(["--execute", "--confirm", CONFIRM_EXECUTE])
-    result = command_result(command, timeout=45)
-    return {"ok": result["returncode"] == 0, "motion_mode": motion_mode, "result": result}
+        target_z_min_mm=target_z_min_mm,
+        send_duration=3.0,
+        wait_after_send=0.5,
+    )
+    response.update(
+        {
+            "point_json": str(target_json),
+            "point_name": point_name,
+            "pose_before": pose_report["pose"],
+        }
+    )
+    return response
+
+
+def current_target_point_mm_from_path(path: Path, point_name: str) -> list[float]:
+    document = json.loads(path.read_text(encoding="utf-8"))
+    key = f"{point_name}_m"
+    for block_name in ("probe_tip_contact_targets_base", "base_link_line"):
+        block = document.get(block_name)
+        if isinstance(block, dict) and isinstance(block.get(key), list) and len(block[key]) == 3:
+            return [float(value) * 1000.0 for value in block[key]]
+    if point_name == "mid":
+        start_mm, end_mm, _ = current_target_line_mm_from_path(path)
+        return [(start_mm[index] + end_mm[index]) * 0.5 for index in range(3)]
+    if document.get("xyz_m") is not None and point_name == "start":
+        xyz_m = document["xyz_m"]
+        if isinstance(xyz_m, list) and len(xyz_m) == 3:
+            return [float(value) * 1000.0 for value in xyz_m]
+    if document.get("target_base_m") is not None and point_name == "start":
+        xyz_m = document["target_base_m"]
+        if isinstance(xyz_m, list) and len(xyz_m) == 3:
+            return [float(value) * 1000.0 for value in xyz_m]
+    raise ValueError(f"{path} has no {point_name} target point")
 
 
 def current_target_line_mm_from_path(path: Path) -> tuple[list[float], list[float], Path]:
@@ -1460,11 +1510,12 @@ def move_line_segments(
     speed: int,
     motion_mode: str,
     segment_mm: float,
+    target_z_min_mm: float | None = None,
 ) -> dict[str, Any]:
     if execute and confirm != CONFIRM_EXECUTE:
         raise ValueError(f"segmented motion requires confirm={CONFIRM_EXECUTE}")
     start_mm, end_mm, path = current_target_line_mm()
-    return move_line_segments_for_path(path, start_mm, end_mm, execute, confirm, speed, motion_mode, segment_mm)
+    return move_line_segments_for_path(path, start_mm, end_mm, execute, confirm, speed, motion_mode, segment_mm, target_z_min_mm)
 
 
 def move_line_segments_for_path(
@@ -1476,6 +1527,7 @@ def move_line_segments_for_path(
     speed: int,
     motion_mode: str,
     segment_mm: float,
+    target_z_min_mm: float | None = None,
 ) -> dict[str, Any]:
     points, length_mm, count = interpolated_line_points_mm(start_mm, end_mm, segment_mm)
     pose_report = read_pose()
@@ -1491,6 +1543,7 @@ def move_line_segments_for_path(
             confirm,
             speed,
             motion_mode,
+            target_z_min_mm=target_z_min_mm,
             send_duration=3.0,
             wait_after_send=0.5,
         )
@@ -1510,6 +1563,7 @@ def move_line_segments_for_path(
                     "target_json": str(path),
                     "start_xyz_mm": start_mm,
                     "end_xyz_mm": end_mm,
+                    "target_z_min_mm": parse_target_z_min_mm(target_z_min_mm),
                     "line_length_mm": length_mm,
                     "requested_segment_mm": segment_mm,
                     "segment_count": count,
@@ -1525,6 +1579,7 @@ def move_line_segments_for_path(
             "target_json": str(path),
             "start_xyz_mm": start_mm,
             "end_xyz_mm": end_mm,
+            "target_z_min_mm": parse_target_z_min_mm(target_z_min_mm),
             "line_length_mm": length_mm,
             "requested_segment_mm": segment_mm,
             "segment_count": count,
@@ -1541,6 +1596,7 @@ def move_three_cut_lines(
     motion_mode: str,
     segment_mm: float,
     use_segments: bool,
+    target_z_min_mm: float | None = None,
 ) -> dict[str, Any]:
     if execute and confirm != CONFIRM_EXECUTE:
         raise ValueError(f"three-line motion requires confirm={CONFIRM_EXECUTE}")
@@ -1577,6 +1633,7 @@ def move_three_cut_lines(
         confirm,
         speed,
         motion_mode,
+        target_z_min_mm=target_z_min_mm,
         send_duration=3.0,
         wait_after_send=0.5,
     )
@@ -1613,6 +1670,7 @@ def move_three_cut_lines(
                     confirm,
                     speed,
                     motion_mode,
+                    target_z_min_mm=target_z_min_mm,
                     send_duration=3.0,
                     wait_after_send=0.5,
                 )
@@ -1645,6 +1703,7 @@ def move_three_cut_lines(
                 confirm,
                 speed,
                 motion_mode,
+                target_z_min_mm=target_z_min_mm,
                 send_duration=3.0,
                 wait_after_send=0.5,
             )
@@ -1674,6 +1733,7 @@ def move_three_cut_lines(
         "execute": execute,
         "motion_mode": motion_mode,
         "use_segments": use_segments,
+        "target_z_min_mm": parse_target_z_min_mm(target_z_min_mm),
         "cut_lines": STATE.get("last_cut_lines"),
         "cut_points": cut_points,
         "steps": steps,
@@ -1686,6 +1746,7 @@ def move_three_cut_point(
     confirm: str,
     speed: int,
     motion_mode: str,
+    target_z_min_mm: float | None = None,
 ) -> dict[str, Any]:
     label = str(point_label).strip().upper()
     if label not in {"A", "B", "C", "D", "E", "F"}:
@@ -1703,6 +1764,7 @@ def move_three_cut_point(
         confirm,
         speed,
         motion_mode,
+        target_z_min_mm,
     )
     response.update(
         {
@@ -1742,19 +1804,19 @@ def run_cut_sequence(
     if not add_step("restore_sdk_control_mode", restore_control(execute, restore_confirm)):
         return {"ok": False, "stopped_at": "restore_sdk_control_mode", "steps": steps}
 
-    if not add_step("move_point_2_pose", move_named_pose("point_2", execute, confirm, speed, motion_mode)):
+    if not add_step("move_point_2_pose", move_named_pose("point_2", execute, confirm, speed, motion_mode, target_z_min_mm)):
         return {"ok": False, "stopped_at": "move_point_2_pose", "steps": steps}
 
-    if not add_step("move_seam_start", move_point("start", execute, confirm, speed, motion_mode)):
+    if not add_step("move_seam_start", move_point("start", execute, confirm, speed, motion_mode, target_z_min_mm)):
         return {"ok": False, "stopped_at": "move_seam_start", "steps": steps}
     if use_segments:
         if not add_step(
             "move_seam_end_segments",
-            move_line_segments(execute, confirm, speed, motion_mode, segment_mm),
+            move_line_segments(execute, confirm, speed, motion_mode, segment_mm, target_z_min_mm),
         ):
             return {"ok": False, "stopped_at": "move_seam_end_segments", "steps": steps}
     else:
-        if not add_step("move_seam_end", move_point("end", execute, confirm, speed, motion_mode)):
+        if not add_step("move_seam_end", move_point("end", execute, confirm, speed, motion_mode, target_z_min_mm)):
             return {"ok": False, "stopped_at": "move_seam_end", "steps": steps}
 
     return {
@@ -1762,6 +1824,7 @@ def run_cut_sequence(
         "execute": execute,
         "motion_mode": motion_mode,
         "use_segments": use_segments,
+        "target_z_min_mm": target_z_min_mm,
         "steps": steps,
     }
 
@@ -1773,6 +1836,7 @@ def jog(
     execute: bool,
     confirm: str,
     speed: int,
+    target_z_min_mm: float | None = None,
     send_duration: float = 0.35,
     send_rate_hz: float = 80.0,
 ) -> dict[str, Any]:
@@ -1794,15 +1858,18 @@ def jog(
     rpy = list(pose["rpy_deg"])
     index = {"x": 0, "y": 1, "z": 2}[axis]
     xyz_mm[index] += direction * float(step_mm)
+    requested_xyz_mm = [float(value) for value in xyz_mm]
+    target_xyz_mm, z_clamped = clamp_xyz_z_min_mm(requested_xyz_mm, target_z_min_mm)
+    z_min = parse_target_z_min_mm(target_z_min_mm)
     command = [
         sys.executable,
         str(ROOT / "04_move_to_probe_tip_pose.py"),
         "--x",
-        f"{xyz_mm[0]:.6f}",
+        f"{target_xyz_mm[0]:.6f}",
         "--y",
-        f"{xyz_mm[1]:.6f}",
+        f"{target_xyz_mm[1]:.6f}",
         "--z",
-        f"{xyz_mm[2]:.6f}",
+        f"{target_xyz_mm[2]:.6f}",
         "--unit",
         "mm",
         "--rx",
@@ -1830,7 +1897,10 @@ def jog(
     return {
         "ok": result["returncode"] == 0,
         "motion_mode": "moveL",
-        "target_xyz_mm": xyz_mm,
+        "requested_xyz_mm": requested_xyz_mm,
+        "target_xyz_mm": target_xyz_mm,
+        "target_z_min_mm": z_min,
+        "z_clamped": z_clamped,
         "target_rpy_deg": rpy,
         "pose_read": pose_report,
         "result": result,
@@ -1873,6 +1943,7 @@ def continuous_jog_worker(
     direction: int,
     speed_mm_s: float,
     speed_percent: int,
+    target_z_min_mm: float,
     can_name: str,
 ) -> None:
     try:
@@ -1892,6 +1963,7 @@ def continuous_jog_worker(
         time.sleep(0.2)
         require_command_ready(piper)
         index = {"x": 0, "y": 1, "z": 2}[axis]
+        target_z_min_m = float(target_z_min_mm) / 1000.0
         dt = 0.01
         move_mode = move_mode_code("moveL")
         sent = 0
@@ -1901,6 +1973,7 @@ def continuous_jog_worker(
                 "axis": axis,
                 "direction": direction,
                 "speed_mm_s": speed_mm_s,
+                "target_z_min_mm": target_z_min_mm,
                 "sent": sent,
             }
         while not stop_event.is_set():
@@ -1914,6 +1987,9 @@ def continuous_jog_worker(
             rpy_deg = [float(value) for value in feedback["rpy_deg"]]
             target_xyz_m = xyz_m[:]
             target_xyz_m[index] += direction * speed_mm_s * dt / 1000.0
+            z_clamped = target_xyz_m[2] < target_z_min_m
+            if z_clamped:
+                target_xyz_m[2] = target_z_min_m
             flange_target = flange_from_tip_target_m(target_xyz_m, rpy_deg, tcp_offset)
             validate_xyz_workspace(
                 "continuous_jog_tip",
@@ -1948,6 +2024,8 @@ def continuous_jog_worker(
                     "sent": sent,
                     "feedback_xyz_mm": [value * 1000.0 for value in xyz_m],
                     "target_xyz_mm": [value * 1000.0 for value in target_xyz_m],
+                    "target_z_min_mm": target_z_min_mm,
+                    "z_clamped": z_clamped,
                     "rpy_deg": rpy_deg,
                 }
             time.sleep(dt)
@@ -1970,6 +2048,7 @@ def start_continuous_jog(
     execute: bool,
     confirm: str,
     speed_percent: int,
+    target_z_min_mm: float | None = None,
 ) -> dict[str, Any]:
     if axis not in {"x", "y", "z"}:
         raise ValueError("axis must be x/y/z")
@@ -1979,6 +2058,7 @@ def start_continuous_jog(
         raise ValueError("speed_mm_s must be in (0, 80]")
     if execute and confirm != CONFIRM_EXECUTE:
         raise ValueError(f"continuous jog requires confirm={CONFIRM_EXECUTE}")
+    z_min = parse_target_z_min_mm(target_z_min_mm)
     stop_continuous_jog()
     with JOG_LOCK:
         old_thread = JOG_CONTROL.get("thread")
@@ -1993,6 +2073,7 @@ def start_continuous_jog(
                 "axis": axis,
                 "direction": direction,
                 "speed_mm_s": speed_mm_s,
+                "target_z_min_mm": z_min,
             },
         }
     from piper_sdk import C_PiperInterface_V2
@@ -2021,7 +2102,7 @@ def start_continuous_jog(
     stop_event = threading.Event()
     thread = threading.Thread(
         target=continuous_jog_worker,
-        args=(stop_event, axis, direction, float(speed_mm_s), int(speed_percent), "can0"),
+        args=(stop_event, axis, direction, float(speed_mm_s), int(speed_percent), z_min, "can0"),
         daemon=True,
     )
     with JOG_LOCK:
@@ -2033,6 +2114,7 @@ def start_continuous_jog(
             "axis": axis,
             "direction": direction,
             "speed_mm_s": speed_mm_s,
+            "target_z_min_mm": z_min,
             "sent": 0,
         }
     thread.start()
@@ -2182,6 +2264,7 @@ class Handler(BaseHTTPRequestHandler):
                     str(body.get("confirm", "")),
                     int(body.get("speed_percent", 5)),
                     parse_motion_mode(body.get("motion_mode")),
+                    parse_target_z_min_mm(body.get("target_z_min_mm")),
                 )
             elif parsed.path == "/api/move_xyz":
                 response = move_manual_xyz(
@@ -2194,6 +2277,7 @@ class Handler(BaseHTTPRequestHandler):
                     str(body.get("confirm", "")),
                     int(body.get("speed_percent", 5)),
                     parse_motion_mode(body.get("motion_mode")),
+                    parse_target_z_min_mm(body.get("target_z_min_mm")),
                 )
             elif parsed.path == "/api/move_point":
                 response = move_point(
@@ -2202,6 +2286,7 @@ class Handler(BaseHTTPRequestHandler):
                     str(body.get("confirm", "")),
                     int(body.get("speed_percent", 5)),
                     parse_motion_mode(body.get("motion_mode")),
+                    parse_target_z_min_mm(body.get("target_z_min_mm")),
                 )
             elif parsed.path == "/api/move_line_segments":
                 response = move_line_segments(
@@ -2210,6 +2295,7 @@ class Handler(BaseHTTPRequestHandler):
                     int(body.get("speed_percent", 5)),
                     parse_motion_mode(body.get("motion_mode")),
                     parse_segment_mm(body.get("segment_mm")),
+                    parse_target_z_min_mm(body.get("target_z_min_mm")),
                 )
             elif parsed.path == "/api/move_three_cut_lines":
                 response = move_three_cut_lines(
@@ -2219,6 +2305,7 @@ class Handler(BaseHTTPRequestHandler):
                     parse_motion_mode(body.get("motion_mode")),
                     parse_segment_mm(body.get("segment_mm")),
                     bool(body.get("use_segments", True)),
+                    parse_target_z_min_mm(body.get("target_z_min_mm")),
                 )
             elif parsed.path == "/api/move_three_cut_point":
                 response = move_three_cut_point(
@@ -2227,6 +2314,7 @@ class Handler(BaseHTTPRequestHandler):
                     str(body.get("confirm", "")),
                     int(body.get("speed_percent", 5)),
                     parse_motion_mode(body.get("motion_mode")),
+                    parse_target_z_min_mm(body.get("target_z_min_mm")),
                 )
             elif parsed.path == "/api/run_cut_sequence":
                 response = run_cut_sequence(
@@ -2248,6 +2336,7 @@ class Handler(BaseHTTPRequestHandler):
                     bool(body.get("execute")),
                     str(body.get("confirm", "")),
                     int(body.get("speed_percent", 5)),
+                    parse_target_z_min_mm(body.get("target_z_min_mm")),
                     float(body.get("send_duration", 0.35)),
                     float(body.get("send_rate_hz", 80.0)),
                 )
@@ -2259,6 +2348,7 @@ class Handler(BaseHTTPRequestHandler):
                     bool(body.get("execute")),
                     str(body.get("confirm", "")),
                     int(body.get("speed_percent", 8)),
+                    parse_target_z_min_mm(body.get("target_z_min_mm")),
                 )
             elif parsed.path == "/api/jog_keepalive":
                 response = keepalive_continuous_jog()

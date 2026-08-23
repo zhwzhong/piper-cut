@@ -25,8 +25,9 @@ X, Y, W, H:
   检测中线只在这个区域里找箱子，ROI 不准会直接影响检测结果。
 
 Z最小 mm:
-  检测中线后生成起点/终点 TCP 目标时使用的 Z 下限。
-  如果换算出的 start/end 的 Z 小于这个值，会被提升到该值，默认 99 mm。
+  全局 TCP 目标 Z 下限，默认 99 mm。
+  检测、手动校准、移动到 XYZ、回到点位、到起点/终点、分段、A-F 和方向点动都会使用同一个值。
+  如果某个待发送目标的 Z 小于这个值，后端会把实际发送的 Z 改为该最小值，并返回 z_clamped=true。
 
 分段 mm:
   勾选“启用分段”后，从起点到终点时的最大插值段长，默认 30 mm。
@@ -137,7 +138,7 @@ EXECUTE:
 
 一键执行:
   顺序执行：检测中线 -> 恢复 SDK 模式 -> 移动到保存点位 point_2 -> 到起点 -> 分段到终点。
-  勾选“三线切割”时，到起点/终点会替换为：A->B -> C->D -> E->F。
+  勾选“三线切割”时，切割路径会替换为：A->B -> B->C -> C->D -> D->E -> E->F。
   网页会分步执行；检测阶段短暂停止实时视频，检测完成后恢复视频再继续运动。
   默认 dry-run。真实运动需要勾选“允许运动”，网页会自动发送确认词。`;
 
@@ -189,6 +190,7 @@ function motionPayload() {
     confirm: execute ? "EXECUTE" : "",
     speed_percent: Number($("speedPercent").value || 5),
     motion_mode: $("motionMode").value,
+    target_z_min_mm: targetZMinMm(),
   };
 }
 
