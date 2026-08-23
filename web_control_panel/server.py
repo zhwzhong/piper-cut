@@ -1545,58 +1545,138 @@ def move_three_cut_lines(
 ) -> dict[str, Any]:
     if execute and confirm != CONFIRM_EXECUTE:
         raise ValueError(f"three-line motion requires confirm={CONFIRM_EXECUTE}")
-    cut_lines = STATE.get("last_cut_lines")
-    if not isinstance(cut_lines, list) or not cut_lines:
+    cut_points = STATE.get("last_cut_points")
+    if not isinstance(cut_points, list) or not cut_points:
         raise ValueError("build three cut lines before moving")
+    point_by_label = {
+        str(point.get("label", "")).upper(): point
+        for point in cut_points
+        if isinstance(point, dict)
+    }
+    ordered_labels = ["A", "B", "C", "D", "E", "F"]
+    missing = [label for label in ordered_labels if label not in point_by_label]
+    if missing:
+        raise ValueError(f"three-cut points missing: {missing}")
+    ordered_points = [point_by_label[label] for label in ordered_labels]
+    xyz_points: list[list[float]] = []
+    for label, point in zip(ordered_labels, ordered_points):
+        xyz = point.get("xyz_mm")
+        if not isinstance(xyz, list) or len(xyz) != 3:
+            raise ValueError(f"three-cut point {label} has no xyz_mm")
+        xyz_points.append([float(value) for value in xyz])
+
+    pose_report = read_pose()
+    if not pose_report["ok"]:
+        return pose_report
+    rpy_deg = [float(value) for value in pose_report["pose"]["corrected_probe_tip"]["rpy_deg"]]
+
     steps: list[dict[str, Any]] = []
-    for line_index, line in enumerate(cut_lines, start=1):
-        if not isinstance(line, dict) or not line.get("target_json"):
-            raise ValueError(f"cut line {line_index} has no target_json")
-        name = str(line.get("name") or f"line_{line_index}")
-        path = Path(str(line["target_json"]))
-        start_mm, end_mm, _ = current_target_line_mm_from_path(path)
-        start_response = move_point_from_target_json(path, "start", execute, confirm, speed, motion_mode)
-        start_step = {"name": f"{name}_move_start", "line_index": line_index, **start_response}
-        steps.append(start_step)
-        if not start_response.get("ok"):
-            return {
-                "ok": False,
-                "cut_mode": "three_line",
-                "stopped_at": start_step["name"],
-                "cut_lines": cut_lines,
-                "steps": steps,
-            }
+    first_response = move_xyz_rpy_mm(
+        xyz_points[0],
+        rpy_deg,
+        execute,
+        confirm,
+        speed,
+        motion_mode,
+        send_duration=3.0,
+        wait_after_send=0.5,
+    )
+    first_step = {
+        "name": "move_to_A",
+        "point_label": "A",
+        "target_xyz_mm": xyz_points[0],
+        **first_response,
+    }
+    steps.append(first_step)
+    if not first_response.get("ok"):
+        return {
+            "ok": False,
+            "cut_mode": "three_line",
+            "path_mode": "continuous_A_to_F",
+            "stopped_at": first_step["name"],
+            "cut_lines": STATE.get("last_cut_lines"),
+            "cut_points": cut_points,
+            "steps": steps,
+        }
+
+    for index in range(1, len(xyz_points)):
+        start_label = ordered_labels[index - 1]
+        end_label = ordered_labels[index]
+        start_mm = xyz_points[index - 1]
+        end_mm = xyz_points[index]
         if use_segments:
-            end_response = move_line_segments_for_path(
-                path,
-                start_mm,
+            points, length_mm, count = interpolated_line_points_mm(start_mm, end_mm, segment_mm)
+            for segment_index, point in enumerate(points, start=1):
+                response = move_xyz_rpy_mm(
+                    point,
+                    rpy_deg,
+                    execute,
+                    confirm,
+                    speed,
+                    motion_mode,
+                    send_duration=3.0,
+                    wait_after_send=0.5,
+                )
+                step = {
+                    "name": f"{start_label}_to_{end_label}_segment_{segment_index:03d}_of_{count:03d}",
+                    "from_label": start_label,
+                    "to_label": end_label,
+                    "segment_index": segment_index,
+                    "segment_count": count,
+                    "line_length_mm": length_mm,
+                    "target_xyz_mm": point,
+                    **response,
+                }
+                steps.append(step)
+                if not response.get("ok"):
+                    return {
+                        "ok": False,
+                        "cut_mode": "three_line",
+                        "path_mode": "continuous_A_to_F",
+                        "stopped_at": step["name"],
+                        "cut_lines": STATE.get("last_cut_lines"),
+                        "cut_points": cut_points,
+                        "steps": steps,
+                    }
+        else:
+            response = move_xyz_rpy_mm(
                 end_mm,
+                rpy_deg,
                 execute,
                 confirm,
                 speed,
                 motion_mode,
-                segment_mm,
+                send_duration=3.0,
+                wait_after_send=0.5,
             )
-        else:
-            end_response = move_point_from_target_json(path, "end", execute, confirm, speed, motion_mode)
-        end_step = {"name": f"{name}_cut_to_end", "line_index": line_index, **end_response}
-        steps.append(end_step)
-        if not end_response.get("ok"):
-            return {
-                "ok": False,
-                "cut_mode": "three_line",
-                "stopped_at": end_step["name"],
-                "cut_lines": cut_lines,
-                "steps": steps,
+            step = {
+                "name": f"{start_label}_to_{end_label}",
+                "from_label": start_label,
+                "to_label": end_label,
+                "target_xyz_mm": end_mm,
+                **response,
             }
+            steps.append(step)
+            if not response.get("ok"):
+                return {
+                    "ok": False,
+                    "cut_mode": "three_line",
+                    "path_mode": "continuous_A_to_F",
+                    "stopped_at": step["name"],
+                    "cut_lines": STATE.get("last_cut_lines"),
+                    "cut_points": cut_points,
+                    "steps": steps,
+                }
     return {
         "ok": True,
         "cut_mode": "three_line",
+        "path_mode": "continuous_A_to_F",
+        "path_labels": ordered_labels,
         "execute": execute,
         "motion_mode": motion_mode,
         "use_segments": use_segments,
-        "cut_lines": cut_lines,
-        "cut_points": STATE.get("last_cut_points"),
+        "cut_lines": STATE.get("last_cut_lines"),
+        "cut_points": cut_points,
         "steps": steps,
     }
 

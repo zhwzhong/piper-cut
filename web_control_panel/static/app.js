@@ -37,7 +37,7 @@ Z最小 mm:
   左边线段端点为 A/B，中间为 C/D，右边为 E/F。
   端部线 px 是左右短线的像素长度，默认 90 px，用于把胶带两端也切开。
   生成三线后，可通过“三线点位”下拉框选择 A-F 任一点并移动过去。
-  “一键 A-F”会按 A->B -> C->D -> E->F 执行，并使用当前分段设置。
+  “一键 A-F”会先移动到 point_2，再按 A->B -> B->C -> C->D -> D->E -> E->F 连续执行，并使用当前分段设置。
 
 mask mode:
   rgbd      彩色图 + 深度图一起分割箱子，默认模式。
@@ -790,16 +790,30 @@ $("moveThreeCutPointBtn").addEventListener("click", () => {
 });
 
 $("moveThreeCutAllBtn").addEventListener("click", () => {
-  try {
-    post("/api/move_three_cut_lines", {
-      segment_mm: segmentMm(),
-      use_segments: useSegments(),
-      ...motionPayload(),
-    }, "move A-F...");
-  } catch (error) {
-    $("statusText").textContent = "invalid A-F";
-    $("logBox").textContent = String(error);
-  }
+  const steps = [];
+  const motion = motionPayload();
+  runSequenceStep(steps, "move_point_2_pose", "/api/move_named_pose", {
+    pose_name: "point_2",
+    ...motion,
+  }, "move point_2...")
+    .then((ok) => {
+      if (!ok) return false;
+      return runSequenceStep(steps, "move_A_to_F", "/api/move_three_cut_lines", {
+        segment_mm: segmentMm(),
+        use_segments: useSegments(),
+        ...motion,
+      }, "move A-F...");
+    })
+    .then((ok) => {
+      if (ok) {
+        showLog({ steps });
+        $("statusText").textContent = "A-F done";
+      }
+    })
+    .catch((error) => {
+      $("statusText").textContent = "A-F failed";
+      $("logBox").textContent = String(error);
+    });
 });
 
 $("selectLineBtn").addEventListener("click", () => {
