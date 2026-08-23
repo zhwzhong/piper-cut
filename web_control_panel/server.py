@@ -300,7 +300,7 @@ def draw_box_overlay(image: Any, box_pixels: dict[str, Any] | None) -> None:
     )
 
 
-def annotate_roi(color_path: Path, roi: list[int]) -> Path:
+def annotate_roi(color_path: Path, roi: list[int], include_detection_overlay: bool = True) -> Path:
     import cv2
 
     image = cv2.imread(str(color_path))
@@ -308,15 +308,16 @@ def annotate_roi(color_path: Path, roi: list[int]) -> Path:
         raise RuntimeError(f"failed to read image: {color_path}")
 
     draw_roi_overlay(image, roi)
-    draw_box_overlay(image, STATE.get("last_box_pixels"))
-    draw_seam_overlay(image, STATE.get("last_seam_pixels"))
+    if include_detection_overlay:
+        draw_box_overlay(image, STATE.get("last_box_pixels"))
+        draw_seam_overlay(image, STATE.get("last_seam_pixels"))
 
     x, y, w, h = roi
     output = ARTIFACTS / f"roi_{x}_{y}_{w}_{h}_{now_id()}.jpg"
     return write_jpeg(image, output)
 
 
-def capture_snapshot(roi: list[int]) -> dict[str, Any]:
+def capture_snapshot(roi: list[int], include_detection_overlay: bool = True) -> dict[str, Any]:
     ensure_dirs()
     before = {path.resolve() for path in CAPTURES.glob("snapshot_*")}
     with CAMERA_LOCK:
@@ -334,7 +335,7 @@ def capture_snapshot(roi: list[int]) -> dict[str, Any]:
     if result["returncode"] != 0:
         return {"ok": False, "result": result}
     snapshot = newest_dir(CAPTURES, "snapshot_", before)
-    annotated = annotate_roi(snapshot / "color.png", roi)
+    annotated = annotate_roi(snapshot / "color.png", roi, include_detection_overlay)
     image_url = file_url(annotated)
     STATE["last_snapshot"] = str(snapshot)
     STATE["last_image_url"] = image_url
@@ -849,8 +850,6 @@ def draw_validation_overlay(
     if image is None:
         raise RuntimeError(f"failed to read image: {color_path}")
     draw_roi_overlay(image, roi)
-    draw_box_overlay(image, STATE.get("last_box_pixels"))
-    draw_seam_overlay(image, STATE.get("last_seam_pixels"))
     x = int(round(float(point_px[0])))
     y = int(round(float(point_px[1])))
     cv2.drawMarker(image, (x, y), (0, 255, 255), cv2.MARKER_CROSS, 32, 4, cv2.LINE_AA)
@@ -2116,7 +2115,10 @@ class Handler(BaseHTTPRequestHandler):
             parsed = urlparse(self.path)
             body = self.read_json()
             if parsed.path == "/api/capture":
-                response = capture_snapshot(parse_roi(body.get("roi")))
+                response = capture_snapshot(
+                    parse_roi(body.get("roi")),
+                    bool(body.get("include_detection_overlay", True)),
+                )
             elif parsed.path == "/api/detect":
                 response = detect_seam(
                     parse_roi(body.get("roi")),

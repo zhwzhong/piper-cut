@@ -703,7 +703,7 @@ async function captureValidationSnapshot() {
     const response = await fetch("/api/capture", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roi: roi() }),
+      body: JSON.stringify({ roi: roi(), include_detection_overlay: false }),
     });
     const data = await response.json();
     if (data.image_url) showImage(data.image_url);
