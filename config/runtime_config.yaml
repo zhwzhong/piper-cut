@@ -1,0 +1,26 @@
+runtime_backend: sdk
+
+board_frame: chessboard
+inner_cols: 11
+inner_rows: 8
+square_size_m: 0.035
+
+# OpenCV row-major corner IDs. Confirm the annotated touch plan after mounting
+# the board in the new scene; change these only if you intentionally want
+# different physical board-axis directions.
+origin_corner_id: 10
+x_neighbor_corner_id: 9
+y_neighbor_corner_id: 21
+contact_plane_offset_m: 0.0
+
+camera_serial: CPC87630008B
+camera_frame: gemini336l_color_optical_frame
+color_width: 1280
+color_height: 720
+camera_fps: 30
+
+can_name: can0
+robot_base_frame: base_link
+
+calibration_corner_ids: [10, 0, 87, 77, 5, 82, 43, 33, 25, 29, 58, 62]
+validation_corner_ids: [13, 19, 38, 46, 52, 71]

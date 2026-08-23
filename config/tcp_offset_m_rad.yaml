@@ -1,0 +1,542 @@
+tool: piper_tcp_calibrate_sdk.py
+created_at: '2026-08-22T18:12:19+08:00'
+input:
+  backend: piper_sdk
+  can_name: can0
+  pose_source: raw J6 end-pose feedback; no ROS/driver TCP offset
+  software_tcp_offset_during_collection_m_rad:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.0
+  sample_count: 32
+result:
+  status: calibrated_and_validated
+  tcp_offset_m_rad:
+  - -0.0003274183293704914
+  - 0.0011431397434742835
+  - 0.07693659633207012
+  - 0.0
+  - 0.0
+  - 0.0
+  tcp_translation_flange_m:
+  - -0.0003274183293704914
+  - 0.0011431397434742835
+  - 0.07693659633207012
+  tcp_rotation_xyz_rad:
+  - 0.0
+  - 0.0
+  - 0.0
+  fixed_pivot_base_m:
+  - 0.353034491959304
+  - 0.008472464237657488
+  - 0.0017965156163123424
+quality:
+  residual_rms_mm: 1.214414948174022
+  residual_median_mm: 1.05470173982007
+  residual_max_mm: 2.286938151562163
+  rank: 6
+  condition_number: 7.489986673975344
+  max_pairwise_rotation_deg: 117.75595602612728
+  leave_one_out_tcp_spread_rms_mm: 0.09913918828068437
+selection_decision:
+  accepted_solution: all_32_samples
+  reason: The balanced 12-sample candidate had lower pivot residuals but failed
+    the independent live RGB-D/probe validation. The all-sample solution passed
+    the same six distributed board points and is authoritative for this probe.
+  superseded_candidate: /home/radxa/piper_tcp_calibration/results/piper_tcp_sdk_20260822_181219_selected_12of32.yaml
+physical_validation:
+  status: passed
+  method: live_cached_rgbd_vs_calibrated_probe_tcp
+  validated_at: '2026-08-22T20:19:44+08:00'
+  comparison_file: /home/radxa/piper_eye_to_hand/live_validation_sessions_sdk/live_rgbd_probe_20260822_201221/comparison.yaml
+  corner_ids: [13, 19, 38, 46, 52, 71]
+  distance_rms_mm: 1.311937291023447
+  distance_median_mm: 1.301124505137782
+  distance_max_mm: 1.7969784715365278
+  axis_rms_mm: [0.5331448157190346, 0.6204734470887028, 1.0256455345331155]
+  acceptance_limits_mm: {distance_rms: 2.5, distance_max: 4.0}
+  passed: true
+samples:
+- captured_at: '2026-08-22T18:08:04+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3577553050847458
+  - 0.001522118644067798
+  - 0.07852683050847459
+  flange_quaternion_xyzw:
+  - -0.7721081368139748
+  - 0.6331811841657031
+  - 0.05156174120249201
+  - 0.016492420329887035
+  averaged_feedback_count: 59
+  window_position_rms_mm: 0.10388218416698064
+  window_rotation_rms_deg: 0.09213259327533602
+  pivot_contact_residual_mm: 1.0405705181194587
+- captured_at: '2026-08-22T18:08:12+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.374955
+  - -0.021203
+  - 0.07026900000000004
+  flange_quaternion_xyzw:
+  - -0.6689857188883634
+  - 0.7039211133759377
+  - 0.23623116100590086
+  - 0.03388233517342288
+  averaged_feedback_count: 58
+  window_position_rms_mm: 4.163336342344337e-14
+  window_rotation_rms_deg: 1.2074182697257336e-06
+  pivot_contact_residual_mm: 0.8340719926719178
+- captured_at: '2026-08-22T18:08:21+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3473140000000004
+  - -0.01765099999999998
+  - 0.07421200000000007
+  flange_quaternion_xyzw:
+  - -0.5878115158831744
+  - 0.7905404017303785
+  - 0.10132374387664725
+  - 0.13876957142657798
+  averaged_feedback_count: 56
+  window_position_rms_mm: 3.9527340757811485e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 1.1756126349712661
+- captured_at: '2026-08-22T18:08:29+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.37171119642857103
+  - -0.019202696428571427
+  - 0.07159416071428579
+  flange_quaternion_xyzw:
+  - -0.6770033859893857
+  - 0.7055390874138981
+  - 0.20596863715242664
+  - 0.03818287573825268
+  averaged_feedback_count: 56
+  window_position_rms_mm: 0.05389510846856154
+  window_rotation_rms_deg: 0.033886586331322896
+  pivot_contact_residual_mm: 1.0688329615206813
+- captured_at: '2026-08-22T18:08:36+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3448460000000003
+  - -0.01583299999999999
+  - 0.07415299999999994
+  flange_quaternion_xyzw:
+  - -0.5893581335277396
+  - 0.7906110385159678
+  - 0.0894857548796454
+  - 0.13994097289579696
+  averaged_feedback_count: 57
+  window_position_rms_mm: 3.378215302006314e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.39586704999802974
+- captured_at: '2026-08-22T18:08:42+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3853259999999995
+  - 0.009666999999999992
+  - 0.07161399999999994
+  flange_quaternion_xyzw:
+  - 0.7967575588238678
+  - -0.5670878328275589
+  - -0.16700351881403086
+  - 0.12529408214159693
+  averaged_feedback_count: 56
+  window_position_rms_mm: 5.027496796041326e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.40438312435140167
+- captured_at: '2026-08-22T18:08:51+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.34386200000000006
+  - 0.008064999999999992
+  - 0.07740899999999995
+  flange_quaternion_xyzw:
+  - -0.801256440683058
+  - 0.5950558995360946
+  - -0.04272076275250637
+  - 0.04551405410475719
+  averaged_feedback_count: 57
+  window_position_rms_mm: 6.973502068242161e-14
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 1.7976644703542644
+- captured_at: '2026-08-22T18:09:01+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.31764639655172416
+  - 0.005851965517241377
+  - 0.069766
+  flange_quaternion_xyzw:
+  - -0.759173475274101
+  - 0.6023579357833949
+  - -0.19191049228691018
+  - 0.15489000803540362
+  averaged_feedback_count: 58
+  window_position_rms_mm: 0.005013448026830345
+  window_rotation_rms_deg: 0.056356850928867754
+  pivot_contact_residual_mm: 2.286938151562163
+- captured_at: '2026-08-22T18:09:11+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.36976499999999995
+  - 0.04279900000000002
+  - 0.06972099999999995
+  flange_quaternion_xyzw:
+  - 0.894646633414289
+  - -0.375003072238013
+  - -0.013009318280935754
+  - 0.2425094941860951
+  averaged_feedback_count: 57
+  window_position_rms_mm: 7.244417918960238e-14
+  window_rotation_rms_deg: 1.2074182697257333e-06
+  pivot_contact_residual_mm: 1.3333871659639234
+- captured_at: '2026-08-22T18:09:17+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3515569999999998
+  - 0.038461999999999996
+  - 0.07236399999999997
+  flange_quaternion_xyzw:
+  - 0.9309097407445338
+  - -0.30878000563317043
+  - 0.0727054292548503
+  - 0.18104110932324713
+  averaged_feedback_count: 56
+  window_position_rms_mm: 2.2377260456559047e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.6696512797745587
+- captured_at: '2026-08-22T18:09:26+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.34315591379310334
+  - 0.036228793103448315
+  - 0.07265575862068968
+  flange_quaternion_xyzw:
+  - 0.9493092701588165
+  - -0.24340372905271304
+  - 0.1179704305034262
+  - 0.16015464963779488
+  averaged_feedback_count: 58
+  window_position_rms_mm: 0.07478575224998132
+  window_rotation_rms_deg: 0.0466131008305501
+  pivot_contact_residual_mm: 1.0212024571403233
+- captured_at: '2026-08-22T18:09:35+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.35858999999999963
+  - 0.024807000000000017
+  - 0.07694199999999993
+  flange_quaternion_xyzw:
+  - 0.8843874073057868
+  - -0.4551009862202613
+  - 0.02277090203652388
+  - 0.10111128602058757
+  averaged_feedback_count: 57
+  window_position_rms_mm: 3.4066011831660507e-13
+  window_rotation_rms_deg: 1.2074182697257333e-06
+  pivot_contact_residual_mm: 0.7510226405339369
+- captured_at: '2026-08-22T18:09:41+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3231119999999998
+  - 0.010683
+  - 0.07276099999999995
+  flange_quaternion_xyzw:
+  - -0.8736985026263075
+  - 0.43917583850407726
+  - -0.18821535077857834
+  - 0.091381021629688
+  averaged_feedback_count: 57
+  window_position_rms_mm: 2.2591401799415136e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 1.4924693907426638
+- captured_at: '2026-08-22T18:09:52+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.33674999999999994
+  - 0.007695999999999994
+  - 0.07658800000000007
+  flange_quaternion_xyzw:
+  - -0.8023185151194032
+  - 0.5849824808516262
+  - -0.09213915667756545
+  - 0.07477214187128717
+  averaged_feedback_count: 56
+  window_position_rms_mm: 8.906837976986813e-14
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.725246732508647
+- captured_at: '2026-08-22T18:09:58+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.383368222222222
+  - -0.021239925925925912
+  - 0.06671764814814823
+  flange_quaternion_xyzw:
+  - 0.6819599895005067
+  - -0.6760913515713971
+  - -0.27894034622457575
+  - 0.00483117987081429
+  averaged_feedback_count: 54
+  window_position_rms_mm: 0.07225307270818439
+  window_rotation_rms_deg: 0.04559797336205431
+  pivot_contact_residual_mm: 1.217616976347948
+- captured_at: '2026-08-22T18:10:07+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3467040000000002
+  - -0.01594600000000001
+  - 0.07437799999999994
+  flange_quaternion_xyzw:
+  - -0.6027298135243917
+  - 0.780940420483412
+  - 0.0991104389240995
+  - 0.1304835332151765
+  averaged_feedback_count: 55
+  window_position_rms_mm: 2.2911487958381183e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.8971965799725371
+- captured_at: '2026-08-22T18:10:15+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.331391
+  - 4.7999999999999994e-05
+  - 0.07456700000000004
+  flange_quaternion_xyzw:
+  - -0.6315654489922143
+  - 0.7571104622142687
+  - -0.05640960854034332
+  - 0.1572475364172186
+  averaged_feedback_count: 55
+  window_position_rms_mm: 4.163336397489711e-14
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 1.4119485403176397
+- captured_at: '2026-08-22T18:10:23+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3721169999999997
+  - 0.00433
+  - 0.07641099999999991
+  flange_quaternion_xyzw:
+  - 0.7926425143892923
+  - -0.59781476855931
+  - -0.10700143354402515
+  - 0.053721877243099084
+  averaged_feedback_count: 55
+  window_position_rms_mm: 2.897767167584095e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.8749492138452309
+- captured_at: '2026-08-22T18:10:29+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.31871800000000017
+  - 0.006321000000000002
+  - 0.06967800000000005
+  flange_quaternion_xyzw:
+  - -0.760835213507443
+  - 0.6036149790056171
+  - -0.1845886310845588
+  - 0.1506843465044098
+  averaged_feedback_count: 56
+  window_position_rms_mm: 1.7556095795380163e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 1.8305325014576381
+- captured_at: '2026-08-22T18:10:36+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.36256599999999994
+  - 0.03262199999999998
+  - 0.07434999999999994
+  flange_quaternion_xyzw:
+  - 0.8974327016756355
+  - -0.40902572152969874
+  - 0.012520376031884325
+  - 0.1647900035630179
+  averaged_feedback_count: 55
+  window_position_rms_mm: 8.12176708575559e-14
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.24516693767108877
+- captured_at: '2026-08-22T18:10:43+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.34910299999999983
+  - 0.030987000000000035
+  - 0.07537899999999995
+  flange_quaternion_xyzw:
+  - 0.9186581291354509
+  - -0.37060532500519455
+  - 0.07398804207841139
+  - 0.11508563976687357
+  averaged_feedback_count: 56
+  window_position_rms_mm: 1.7964232137956418e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 1.8341600358103936
+- captured_at: '2026-08-22T18:10:48+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.35887500000000006
+  - 0.007070000000000004
+  - 0.07790799999999995
+  flange_quaternion_xyzw:
+  - 0.8020873801061151
+  - -0.5965170650603685
+  - -0.028387737327880757
+  - 0.004166789612632528
+  averaged_feedback_count: 57
+  window_position_rms_mm: 6.952433221959955e-14
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 1.2036834037559583
+- captured_at: '2026-08-22T18:10:52+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3322455272727274
+  - 0.004251272727272734
+  - 0.07518776363636355
+  flange_quaternion_xyzw:
+  - -0.7566722500146029
+  - 0.6367942549190989
+  - -0.0991547001136466
+  - 0.11003875865003597
+  averaged_feedback_count: 55
+  window_position_rms_mm: 0.08284054183732098
+  window_rotation_rms_deg: 0.05178945266546431
+  pivot_contact_residual_mm: 1.1846519080379636
+- captured_at: '2026-08-22T18:10:57+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3562049999999996
+  - -0.01645300000000002
+  - 0.07404399999999989
+  flange_quaternion_xyzw:
+  - -0.6398801892640468
+  - 0.7499267791081404
+  - 0.13662547117714274
+  - 0.09745075674165865
+  averaged_feedback_count: 56
+  window_position_rms_mm: 4.04663061721137e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.9256453615408285
+- captured_at: '2026-08-22T18:11:02+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.335119
+  - -0.013692999999999988
+  - 0.07292299999999996
+  flange_quaternion_xyzw:
+  - -0.4983522437415148
+  - 0.8450187608330906
+  - 0.0674763037012602
+  - 0.18175610976449016
+  averaged_feedback_count: 58
+  window_position_rms_mm: 4.2914688736145975e-14
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 1.4118221015210264
+- captured_at: '2026-08-22T18:11:08+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3797560000000003
+  - -0.019897000000000026
+  - 0.0685889999999999
+  flange_quaternion_xyzw:
+  - -0.680985052416951
+  - 0.6863387405008001
+  - 0.25511883798204565
+  - 0.010624037798727169
+  averaged_feedback_count: 57
+  window_position_rms_mm: 3.480531475248531e-13
+  window_rotation_rms_deg: 1.7075472925031877e-06
+  pivot_contact_residual_mm: 0.40209484091624115
+- captured_at: '2026-08-22T18:11:13+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3789171379310349
+  - 0.012052689655172427
+  - 0.07445189655172414
+  flange_quaternion_xyzw:
+  - 0.8132324877201482
+  - -0.5583104288865858
+  - -0.1212955725248392
+  - 0.1105882905141738
+  averaged_feedback_count: 58
+  window_position_rms_mm: 0.08832841242958293
+  window_rotation_rms_deg: 0.060779825981759704
+  pivot_contact_residual_mm: 0.2706075390788278
+- captured_at: '2026-08-22T18:11:18+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.33846300000000046
+  - -0.01388800000000001
+  - 0.07427599999999993
+  flange_quaternion_xyzw:
+  - -0.5562575501474275
+  - 0.8133081700178527
+  - 0.05114999086256194
+  - 0.16276067375430023
+  averaged_feedback_count: 58
+  window_position_rms_mm: 5.045033986138504e-13
+  window_rotation_rms_deg: 1.2074182697257336e-06
+  pivot_contact_residual_mm: 1.390648283496221
+- captured_at: '2026-08-22T18:11:26+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.34133399999999986
+  - 0.003380999999999997
+  - 0.07700399999999999
+  flange_quaternion_xyzw:
+  - -0.7524083132503208
+  - 0.6512852810440813
+  - -0.04468088856638875
+  - 0.08782272510038237
+  averaged_feedback_count: 58
+  window_position_rms_mm: 1.119274788165421e-13
+  window_rotation_rms_deg: 1.2074182697257336e-06
+  pivot_contact_residual_mm: 1.4209880384851767
+- captured_at: '2026-08-22T18:11:36+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3792709999999996
+  - 0.0034599999999999982
+  - 0.07413099999999999
+  flange_quaternion_xyzw:
+  - 0.7794134407165623
+  - -0.603211752315061
+  - -0.15399565483336725
+  - 0.07025388666690356
+  averaged_feedback_count: 57
+  window_position_rms_mm: 3.888296669493419e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.9004934348145308
+- captured_at: '2026-08-22T18:11:43+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3329650000000001
+  - -0.02603700000000002
+  - 0.06812899999999991
+  flange_quaternion_xyzw:
+  - -0.37096241186112117
+  - 0.8908848789046329
+  - 0.1562725026898471
+  - 0.21045171994618958
+  averaged_feedback_count: 58
+  window_position_rms_mm: 1.403304445990231e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.8158886014285082
+- captured_at: '2026-08-22T18:11:49+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.36970633333333347
+  - -0.02344024561403512
+  - 0.07078480701754379
+  flange_quaternion_xyzw:
+  - -0.652842688435809
+  - 0.7206484129582714
+  - 0.22758778942160704
+  - 0.05163416662265722
+  averaged_feedback_count: 57
+  window_position_rms_mm: 0.03708456558484737
+  window_rotation_rms_deg: 0.02631328604948249
+  pivot_contact_residual_mm: 2.0817039332429026

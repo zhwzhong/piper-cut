@@ -1,0 +1,76 @@
+calibration_type: orbbec_registered_depth_local_additive_bias
+created_at: '2026-08-21T15:18:01+08:00'
+input:
+  backend: pyorbbecsdk2
+  config: /home/radxa/piper_eye_to_hand/board_config_sdk.yaml
+  device:
+    name: Orbbec Gemini 336L
+    serial_number: CPC87630008B
+    connection_type: USB3.2
+    color_profile:
+      width: 1280
+      height: 720
+      fps: 30
+      format: OBFormat.RGB
+    depth_profile_before_alignment:
+      width: 848
+      height: 480
+      fps: 30
+      format: OBFormat.Y16
+  intrinsics:
+    width: 1280
+    height: 720
+    K:
+    - 612.08203125
+    - 0.0
+    - 642.49365234375
+    - 0.0
+    - 612.1744384765625
+    - 363.754150390625
+    - 0.0
+    - 0.0
+    - 1.0
+    D:
+    - -0.033172909170389175
+    - 0.03850296139717102
+    - -0.00017299708270002156
+    - 3.3517568226670846e-05
+    - -0.01343774888664484
+    - 0.0
+    - 0.0
+    - 0.0
+  board:
+    inner_cols: 11
+    inner_rows: 8
+    square_size_m: 0.035
+  frames: 30
+  valid_corner_depth_samples: 2640
+  patch_radius_px: 4
+correction:
+  model: local_additive_camera_z_bias
+  raw_minus_metric_reference_median_mm: 3.0909527232589653
+  add_to_raw_depth_mm: -3.0909527232589653
+  formula: corrected_depth_mm = raw_depth_mm + add_to_raw_depth_mm
+  validated_expected_depth_range_mm:
+  - 684.6854915954078
+  - 702.1496714338733
+  extrapolation_outside_validated_range: not_validated
+quality:
+  raw_minus_reference_mean_mm: 3.0828044283788105
+  raw_minus_reference_median_mm: 3.0909527232589653
+  raw_minus_reference_std_mm: 0.9145256511435585
+  raw_minus_reference_mad_mm: 0.6948328654365241
+  raw_minus_reference_rmse_mm: 3.2155933060994437
+  raw_minus_reference_percentiles_mm:
+    p05: 1.8183381672747714
+    p25: 2.350307336138485
+    p50: 3.0909527232589653
+    p75: 3.697551707344843
+    p95: 4.633442550591672
+  per_frame_bias_median_std_mm: 0.14009608963266876
+  per_frame_bias_median_min_mm: 2.8031933517634684
+  per_frame_bias_median_max_mm: 3.2857568627218825
+  reprojection_rms_median_px: 0.10643807548491271
+  reprojection_rms_max_px: 0.11196730539095034
+usage_note: Apply only to registered depth deprojection near the validated depth range.
+  Do not modify T_base_camera; validate additional distances before extrapolation.

@@ -1,0 +1,185 @@
+convention: T_parent_child maps child-frame coordinates into parent frame
+inputs:
+  config: /home/radxa/piper_eye_to_hand/board_config_sdk.yaml
+  camera_pose: /home/radxa/piper_eye_to_hand/results_sdk/camera_board_20260821_143503/camera_board_pose.yaml
+  touch_session: /home/radxa/piper_eye_to_hand/touch_sessions_sdk/board_points_20260821_144046.yaml
+frames:
+  robot_base: base_link
+  camera: gemini336l_color_optical_frame
+  board: chessboard
+T_base_camera:
+  translation_m:
+  - 0.43049984681394654
+  - -0.0596527660132663
+  - 0.688782996601888
+  quaternion_xyzw:
+  - -0.9996673475321308
+  - 0.007613882366656755
+  - 0.017025905972304353
+  - 0.017814084293136218
+  matrix_4x4:
+  - - 0.9993042946422581
+    - -0.01582930102811033
+    - -0.03376921584077463
+    - 0.43049984681394654
+  - - -0.01461609733147935
+    - -0.9992493743922077
+    - 0.03587558327858437
+    - -0.0596527660132663
+  - - -0.03431175320988521
+    - -0.03535705029754872
+    - -0.9987855538532388
+    - 0.688782996601888
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+T_camera_base:
+  translation_m:
+  - -0.40743888420358365
+  - -0.02844014239679847
+  - 0.7046242267670976
+  quaternion_xyzw:
+  - 0.9996673475321308
+  - -0.007613882366656755
+  - -0.017025905972304353
+  - 0.017814084293136218
+  matrix_4x4:
+  - - 0.9993042946422581
+    - -0.01461609733147935
+    - -0.03431175320988521
+    - -0.40743888420358365
+  - - -0.01582930102811033
+    - -0.9992493743922077
+    - -0.03535705029754872
+    - -0.02844014239679847
+  - - -0.03376921584077463
+    - 0.03587558327858437
+    - -0.9987855538532388
+    - 0.7046242267670976
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+T_base_board:
+  translation_m:
+  - 0.3086859977538053
+  - 0.12565886402522505
+  - -0.0033773684879396734
+  quaternion_xyzw:
+  - -0.0004330086617801221
+  - 0.004251180192670351
+  - -0.70814160646612
+  - 0.7060575083957761
+  matrix_4x4:
+  - - -0.002965214682895162
+    - 0.9999737149100093
+    - 0.006616418287890103
+    - 0.3086859977538053
+  - - -0.9999810781013941
+    - -0.002929444609836249
+    - -0.005409417108328594
+    - 0.12565886402522505
+  - - -0.00538989249042311
+    - -0.006632333175729643
+    - 0.9999634799409366
+    - -0.0033773684879396734
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+T_camera_board:
+  translation_m:
+  - -0.10068839970537445
+  - -0.15877155345494615
+  - 0.7020814945787468
+  quaternion_xyzw:
+  - 0.7112790100551502
+  - 0.702613305847166
+  - -0.020389693867976937
+  - 0.0009862481698820205
+  matrix_4x4:
+  - - 0.011837605660973582
+    - 0.9995484118656207
+    - -0.027619620365431353
+    - -0.10068839970537445
+  - - 0.9994679746725738
+    - -0.012667139522128279
+    - -0.030055135671466712
+    - -0.15877155345494615
+  - - -0.030391424713537448
+    - -0.027249145183697164
+    - -0.9991665753970352
+    - 0.7020814945787468
+  - - 0.0
+    - 0.0
+    - 0.0
+    - 1.0
+touch_fit:
+  corner_ids_in_file_order:
+  - 10
+  - 0
+  - 87
+  - 77
+  - 5
+  - 82
+  - 43
+  - 33
+  - 25
+  - 29
+  - 58
+  - 62
+  inlier_mask:
+  - true
+  - true
+  - true
+  - true
+  - true
+  - true
+  - true
+  - true
+  - true
+  - true
+  - true
+  - true
+  residuals_mm:
+  - 1.7873299598749592
+  - 1.564999377171416
+  - 1.8059010849098578
+  - 1.4992654991541459
+  - 1.28758270257097
+  - 0.8300334422642598
+  - 0.6939106662803041
+  - 0.8666948378620191
+  - 1.0235113443377266
+  - 1.099409760409243
+  - 0.3022014572306603
+  - 1.1467229292316083
+  inlier_count: 12
+  rms_mm: 1.2381074393971336
+  median_mm: 1.1230663448204257
+  max_mm: 1.8059010849098578
+  experimental_acceptance:
+    rms_limit_mm: 1.5
+    max_limit_mm: 2.5
+    passed: true
+leave_one_out:
+  translation_spread_rms_mm: 0.6371941036149541
+  translation_spread_max_mm: 1.189769226944938
+  rotation_spread_rms_deg: 0.0656723988466413
+  rotation_spread_max_deg: 0.11245022348982792
+camera_pnp_quality:
+  frames: 30
+  final_reprojection_rms_px: 0.10273534983704158
+  final_reprojection_median_px: 0.09494458944880291
+  final_reprojection_max_px: 0.20444286045556964
+  per_frame_reprojection_rms_median_px: 0.10696453718922402
+  per_frame_reprojection_rms_max_px: 0.11191376303423549
+  translation_repeatability_rms_mm: 0.0363478327003052
+  translation_repeatability_max_mm: 0.09696163011497104
+  rotation_repeatability_rms_deg: 0.013811520929757381
+  rotation_repeatability_max_deg: 0.024061945851316432
+runtime_usage_note:
+  backend: sdk
+  use: Load T_base_camera.matrix_4x4 directly in the SDK pipeline; there is no ROS
+    TF publisher on this controller.

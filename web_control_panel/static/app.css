@@ -1,0 +1,305 @@
+:root {
+  --bg: #f4f6f8;
+  --panel: #ffffff;
+  --ink: #17202a;
+  --muted: #647182;
+  --line: #d7dee8;
+  --blue: #2276d2;
+  --green: #15845b;
+  --red: #b42318;
+  --amber: #b7791f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  min-height: 100vh;
+}
+
+.viewport {
+  padding: 20px;
+  display: grid;
+  grid-template-rows: auto minmax(360px, 1fr) 190px;
+  gap: 14px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+#statusText {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.roi-fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+input,
+select,
+button {
+  font: inherit;
+}
+
+input,
+select {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 6px;
+  min-height: 34px;
+  padding: 6px 8px;
+}
+
+.roi-fields input {
+  width: 72px;
+}
+
+#targetZMin {
+  width: 88px;
+}
+
+.switch {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.switch input {
+  min-height: auto;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+}
+
+.image-stage {
+  position: relative;
+  overflow: hidden;
+  background: #101418;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  min-height: 360px;
+}
+
+.image-stage.calibrating {
+  outline: 3px solid var(--amber);
+  outline-offset: -3px;
+}
+
+.image-stage.calibrating #cameraImage {
+  cursor: crosshair;
+}
+
+#cameraImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: none;
+}
+
+.empty-image {
+  color: #d9e2ec;
+  font-size: 22px;
+}
+
+.output-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 14px;
+  min-height: 0;
+}
+
+pre {
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: #26313f;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.control-panel {
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 7px;
+  cursor: pointer;
+  font-weight: 650;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+button:hover {
+  border-color: var(--blue);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+button.primary {
+  background: var(--blue);
+  color: #fff;
+  border-color: var(--blue);
+}
+
+button.warning {
+  color: var(--amber);
+}
+
+button.danger {
+  color: var(--red);
+}
+
+button.active {
+  border-color: var(--amber);
+  background: #fff7e6;
+  color: var(--amber);
+}
+
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.lock-row {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+}
+
+.lock-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.lock-row select {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.pose-panel {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.pose-panel input,
+.pose-panel select {
+  width: 100%;
+}
+
+.xyz-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.xyz-grid input {
+  margin-top: 4px;
+}
+
+.line-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.jog-panel {
+  margin-top: 4px;
+  display: grid;
+  gap: 12px;
+}
+
+.jog-settings {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.jog-settings input {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.jog-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.jog-grid button {
+  aspect-ratio: 1.25;
+  touch-action: none;
+}
+
+@media (max-width: 920px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .control-panel {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .output-grid {
+    grid-template-columns: 1fr;
+  }
+}

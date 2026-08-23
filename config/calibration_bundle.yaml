@@ -1,0 +1,93 @@
+schema_version: 1
+created_at: '2026-08-22T20:19:44+08:00'
+status: calibrated_and_validated
+scene_note: Fixed-camera PIPER box-opening scene with the replacement probe installed
+  and validated on 2026-08-22; Radxa SDK controller, no ROS2.
+
+hardware:
+  controller_host: 192.168.31.235
+  robot_backend: piper_sdk
+  can_name: can0
+  camera_model: Orbbec Gemini 336L
+  camera_serial: CPC87630008B
+  color_profile: {width: 1280, height: 720, fps: 30}
+
+authoritative_files:
+  tcp_calibration: /home/radxa/piper_tcp_calibration/results/piper_tcp_sdk_20260822_181219_validated_6pt.yaml
+  camera_board_pose: /home/radxa/piper_eye_to_hand/results_sdk/camera_board_20260821_143503/camera_board_pose.yaml
+  eye_to_hand_extrinsics: /home/radxa/piper_eye_to_hand/results_sdk/eye_to_hand_20260821_145824/eye_to_hand_extrinsics.yaml
+  physical_validation: /home/radxa/piper_eye_to_hand/validation_sessions_sdk/reserved_corners_20260821_150221.yaml
+  registered_depth_correction: /home/radxa/piper_eye_to_hand/results_sdk/eye_to_hand_20260821_145824/orbbec_depth_bias_20260821_151128_plane.yaml
+  corrected_rgbd_validation: /home/radxa/piper_eye_to_hand/results_sdk/eye_to_hand_20260821_145824/rgbd_validation_corrected.yaml
+  live_rgbd_probe_validation: /home/radxa/piper_eye_to_hand/live_validation_sessions_sdk/live_rgbd_probe_20260822_201221/comparison.yaml
+
+runtime_geometry:
+  source_frame: gemini336l_color_optical_frame
+  target_frame: base_link
+  transform_convention: P_base = T_base_camera * P_camera
+  T_base_camera_translation_m: [0.43049984681394654, -0.0596527660132663, 0.688782996601888]
+  T_base_camera_quaternion_xyzw: [-0.9996673475321308, 0.007613882366656755, 0.017025905972304353, 0.017814084293136218]
+  registered_depth_correction:
+    model: local_additive_camera_z_bias
+    formula: corrected_depth_mm = raw_registered_depth_mm - 3.0909527232589653
+    add_to_raw_depth_mm: -3.0909527232589653
+    validated_expected_depth_range_mm: [684.6854915954078, 702.1496714338733]
+    extrapolation_outside_validated_range: not_validated
+    application_order:
+      - Apply the depth correction to registered camera-Z depth.
+      - Deproject the corrected pixel/depth with the saved color intrinsics.
+      - Transform the camera point with T_base_camera.matrix_4x4.
+
+acceptance:
+  tcp_selected_12_points:
+    candidate: /home/radxa/piper_tcp_calibration/results/piper_tcp_sdk_20260822_181219_selected_12of32.yaml
+    physical_validation_rms_mm: 3.5169874158811627
+    physical_validation_max_mm: 4.769681283551039
+    rejection_reason: Lower pivot-fit residual but failed independent physical validation
+      with the replacement probe.
+    passed: false
+  tcp_calibration_32_points:
+    calibration: /home/radxa/piper_tcp_calibration/results/piper_tcp_sdk_20260822_181219_validated_6pt.yaml
+    residual_rms_mm: 1.214414948174022
+    residual_max_mm: 2.286938151562163
+    rank: 6
+    condition_number: 7.489986673975344
+    max_pairwise_rotation_deg: 117.75595602612728
+    leave_one_out_tcp_spread_rms_mm: 0.09913918828068437
+    physical_validation_rms_mm: 1.311937291023447
+    physical_validation_max_mm: 1.7969784715365278
+    passed: true
+  camera_board_30_frames:
+    reprojection_rms_px: 0.10273534983704158
+    translation_repeatability_rms_mm: 0.0363478327003052
+    passed: true
+  eye_to_hand_fit_12_points:
+    inliers: 12
+    sample_count: 12
+    residual_rms_mm: 1.2381074393971336
+    residual_max_mm: 1.8059010849098578
+    passed: true
+  independent_probe_validation_6_points:
+    distance_rms_mm: 0.8976357100721079
+    distance_max_mm: 1.095840127727349
+    passed: true
+  corrected_rgbd_to_base_validation_6_points:
+    distance_rms_mm: 1.113207809343193
+    distance_max_mm: 1.9063750755187439
+    passed: true
+  live_rgbd_vs_probe_validation_6_points:
+    distance_rms_mm: 1.311937291023447
+    distance_median_mm: 1.301124505137782
+    distance_max_mm: 1.7969784715365278
+    axis_rms_mm: [0.5331448157190346, 0.6204734470887028, 1.0256455345331155]
+    mean_probe_minus_rgbd_xyz_mm: [0.158, 0.493, 0.394]
+    passed: true
+
+invalidation_conditions:
+  - camera moved or remounted
+  - robot base moved relative to the camera
+  - probe/tool changed or remounted
+  - camera serial or stream geometry changed
+  - using the local depth correction substantially outside its validated depth range
+
+safety_note: Keep guarded approach/contact logic enabled for box cutting. Calibration acceptance does not authorize unattended motion.

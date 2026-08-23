@@ -1,0 +1,6 @@
+numpy
+opencv-python
+PyYAML
+# Hardware packages are installed in /home/radxa/box_sdk_env:
+# pyorbbecsdk / pyorbbecsdk2
+# piper_sdk
