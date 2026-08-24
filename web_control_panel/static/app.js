@@ -38,7 +38,7 @@ Z最小 mm:
   左边线段端点为 A/B，中间为 C/D，右边为 E/F。
   端部线 px 是左右短线的像素长度，默认 90 px，用于把胶带两端也切开。
   生成三线后，可通过“三线点位”下拉框选择 A-F 任一点并移动过去。
-  “一键 A-F”会先移动到 point_2，再按 E->F -> F->D -> D->C -> C->B -> B->A 连续执行，最后回到 point_1，并使用当前分段设置。
+  “一键 A-F”会先移动到 point_2 的保存位姿，再按 E->F -> F->D -> D->C -> C->B -> B->A 连续执行，最后回到 point_1 的保存位姿，并使用当前分段设置。
 
 mask mode:
   rgbd      彩色图 + 深度图一起分割箱子，默认模式。
@@ -135,8 +135,8 @@ EXECUTE:
   把机械臂切回 SDK 可控模式，默认只检查状态。
 
 一键执行:
-  顺序执行：检测中线 -> 恢复 SDK 模式 -> 移动到保存点位 point_2 -> 到起点 -> 分段到终点。
-  勾选“三线切割”时，切割路径会替换为：point_2 -> E -> F -> D -> C -> B -> A -> point_1。
+  顺序执行：检测中线 -> 恢复 SDK 模式 -> 移动到保存点位 point_2 的位姿 -> 到起点 -> 分段到终点。
+  勾选“三线切割”时，切割路径会替换为：point_2 位姿 -> E -> F -> D -> C -> B -> A -> point_1 位姿。
   网页会分步执行；检测阶段短暂停止实时视频，检测完成后恢复视频再继续运动。
   默认 dry-run。真实运动需要勾选“允许运动”，网页会自动发送确认词。`;
 
@@ -631,7 +631,7 @@ async function runOneClickSequence() {
   if (!await runSequenceStep(steps, "move_point_2_pose", "/api/move_named_pose", {
     pose_name: "point_2",
     ...motion,
-  }, "move point_2...")) return;
+  }, "move point_2 pose...")) return;
 
   if (useThreeCut()) {
     if (!await runSequenceStep(steps, "move_three_cut_lines", "/api/move_three_cut_lines", {
@@ -642,7 +642,7 @@ async function runOneClickSequence() {
     if (!await runSequenceStep(steps, "move_point_1_pose", "/api/move_named_pose", {
       pose_name: "point_1",
       ...motion,
-    }, "move point_1...")) return;
+    }, "move point_1 pose...")) return;
   } else {
     if (!await runSequenceStep(steps, "move_seam_start", "/api/move_point", {
       point_name: "start",
@@ -791,7 +791,7 @@ $("moveThreeCutAllBtn").addEventListener("click", () => {
   runSequenceStep(steps, "move_point_2_pose", "/api/move_named_pose", {
     pose_name: "point_2",
     ...motion,
-  }, "move point_2...")
+  }, "move point_2 pose...")
     .then((ok) => {
       if (!ok) return false;
       return runSequenceStep(steps, "move_E_to_A", "/api/move_three_cut_lines", {
@@ -805,7 +805,7 @@ $("moveThreeCutAllBtn").addEventListener("click", () => {
       return runSequenceStep(steps, "move_point_1_pose", "/api/move_named_pose", {
         pose_name: "point_1",
         ...motion,
-      }, "move point_1...");
+      }, "move point_1 pose...");
     })
     .then((ok) => {
       if (ok) {
