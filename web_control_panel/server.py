@@ -1608,10 +1608,11 @@ def move_three_cut_lines(
         for point in cut_points
         if isinstance(point, dict)
     }
-    ordered_labels = ["A", "B", "C", "D", "E", "F"]
-    missing = [label for label in ordered_labels if label not in point_by_label]
+    required_labels = ["A", "B", "C", "D", "E", "F"]
+    missing = [label for label in required_labels if label not in point_by_label]
     if missing:
         raise ValueError(f"three-cut points missing: {missing}")
+    ordered_labels = ["E", "F", "D", "C", "B", "A"]
     ordered_points = [point_by_label[label] for label in ordered_labels]
     xyz_points: list[list[float]] = []
     for label, point in zip(ordered_labels, ordered_points):
@@ -1638,8 +1639,8 @@ def move_three_cut_lines(
         wait_after_send=0.5,
     )
     first_step = {
-        "name": "move_to_A",
-        "point_label": "A",
+        "name": "move_to_E",
+        "point_label": "E",
         "target_xyz_mm": xyz_points[0],
         **first_response,
     }
@@ -1648,7 +1649,7 @@ def move_three_cut_lines(
         return {
             "ok": False,
             "cut_mode": "three_line",
-            "path_mode": "continuous_A_to_F",
+            "path_mode": "continuous_E_to_A",
             "stopped_at": first_step["name"],
             "cut_lines": STATE.get("last_cut_lines"),
             "cut_points": cut_points,
@@ -1689,7 +1690,7 @@ def move_three_cut_lines(
                     return {
                         "ok": False,
                         "cut_mode": "three_line",
-                        "path_mode": "continuous_A_to_F",
+                        "path_mode": "continuous_E_to_A",
                         "stopped_at": step["name"],
                         "cut_lines": STATE.get("last_cut_lines"),
                         "cut_points": cut_points,
@@ -1719,7 +1720,7 @@ def move_three_cut_lines(
                 return {
                     "ok": False,
                     "cut_mode": "three_line",
-                    "path_mode": "continuous_A_to_F",
+                    "path_mode": "continuous_E_to_A",
                     "stopped_at": step["name"],
                     "cut_lines": STATE.get("last_cut_lines"),
                     "cut_points": cut_points,
@@ -1728,7 +1729,7 @@ def move_three_cut_lines(
     return {
         "ok": True,
         "cut_mode": "three_line",
-        "path_mode": "continuous_A_to_F",
+        "path_mode": "continuous_E_to_A",
         "path_labels": ordered_labels,
         "execute": execute,
         "motion_mode": motion_mode,
