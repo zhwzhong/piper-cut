@@ -99,12 +99,10 @@ EXECUTE:
   用当前 ROI 和 mask mode 检测箱子框、中线，并转换成 TCP 目标坐标。
   检测完成后会在“线段起点/终点 px”里显示当前中线的两个像素端点。
 
-选择线段 / 应用线段:
-  “选择线段”后在图像上先点起点、再点终点，重新生成整条中线。
-  也可以直接修改四个像素输入框，然后点“应用线段”。
-
-校准起点 / 校准终点:
-  手动点新的起点或终点，平移整条中线并重新生成目标坐标。
+校准线段 / 确认校准:
+  点击“校准线段”后，在图像上先点起点、再点终点。
+  两个点会先写入输入框，不会立即修改目标；检查无误后点击“确认校准”，后端才会重建整条中线并重新生成目标坐标。
+  也可以直接修改四个像素输入框，然后点“确认校准”。
 
 保存点位:
   按“点位名称”把当前 TCP 位姿保存成一个命名点位。
@@ -517,25 +515,17 @@ function updateCutPointSelect(cutPoints) {
 }
 
 function setManualMode(mode) {
-  if (mode !== null && mode !== "start" && mode !== "end" && mode !== "validation" && mode !== "line_start" && mode !== "line_end") return;
+  if (mode !== null && mode !== "validation" && mode !== "line_start" && mode !== "line_end") return;
   state.manualMode = mode;
-  $("manualStartBtn").classList.toggle("active", mode === "start");
-  $("manualEndBtn").classList.toggle("active", mode === "end");
   $("validationPointBtn").classList.toggle("active", mode === "validation");
   $("selectLineBtn").classList.toggle("active", mode === "line_start" || mode === "line_end");
-  $("manualStartBtn").textContent = mode === "start" ? "点击画面选起点" : "校准起点";
-  $("manualEndBtn").textContent = mode === "end" ? "点击画面选终点" : "校准终点";
   $("validationPointBtn").textContent = mode === "validation" ? "点击画面选点" : "选择验证点";
   $("selectLineBtn").textContent = mode === "line_start"
-    ? "点击线段起点"
+    ? "点击起点"
     : mode === "line_end"
-      ? "点击线段终点"
-      : "选择线段";
-  if (mode === "start") {
-    $("statusText").textContent = "click seam start";
-  } else if (mode === "end") {
-    $("statusText").textContent = "click seam end";
-  } else if (mode === "line_start") {
+      ? "点击终点"
+      : "校准线段";
+  if (mode === "line_start") {
     $("statusText").textContent = "click line start";
   } else if (mode === "line_end") {
     $("statusText").textContent = "click line end";
@@ -845,14 +835,6 @@ $("applyLineBtn").addEventListener("click", () => {
   }
 });
 
-$("manualStartBtn").addEventListener("click", () => {
-  setManualMode(state.manualMode === "start" ? null : "start");
-});
-
-$("manualEndBtn").addEventListener("click", () => {
-  setManualMode(state.manualMode === "end" ? null : "end");
-});
-
 $("captureValidationBtn").addEventListener("click", () => {
   captureValidationSnapshot();
 });
@@ -898,24 +880,10 @@ $("cameraImage").addEventListener("click", (event) => {
     $("lineEndX").value = pointPx[0].toFixed(3);
     $("lineEndY").value = pointPx[1].toFixed(3);
     state.pendingLineStartPx = null;
-    post("/api/manual_seam_line", {
-      ...payload,
-      start_px: start,
-      end_px: pointPx,
-    }, "applying line...").then(() => {
-      restartStreamSoon(900);
-    });
+    $("statusText").textContent = "line ready, confirm calibration";
+    $("logBox").textContent = "已选择起点和终点。确认无误后点击“确认校准”，再重新生成目标坐标。";
     return;
   }
-  if (mode === "start") {
-    payload.start_px = pointPx;
-  } else {
-    payload.end_px = pointPx;
-  }
-  const path = mode === "start" ? "/api/manual_seam_start" : "/api/manual_seam_end";
-  post(path, payload, "manual calibrating...").then(() => {
-    restartStreamSoon(900);
-  });
 });
 
 $("cameraImage").addEventListener("load", () => {
