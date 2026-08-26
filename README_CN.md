@@ -8,6 +8,7 @@
 - 恢复 SDK 可控模式：`05_restore_sdk_control_mode.py`
 - 粗略扫描 TCP 可达范围：`06_scan_reachability_workspace.py`
 - 使用 MoveIt2 `/compute_ik` 扫描 IK 可达范围，并支持探针尽量向下姿态搜索：`07_scan_moveit_ik_reachability.py`
+- 将可达范围转换到相机坐标并画圈：`08_project_reachability_to_camera.py`
 - 所有脚本参数、输入输出字段和共享函数说明
 
 服务器使用：

@@ -467,6 +467,39 @@ python 07_scan_moveit_ik_reachability.py \
 
 负数范围建议用等号写法，例如 `--y-range-mm=-180,180,20`，否则命令行解析可能把负数当成新参数。
 
+### 8. 将可达范围投影到相机图像
+
+脚本：
+
+```bash
+python 08_project_reachability_to_camera.py
+```
+
+功能：
+
+- 读取 `07_scan_moveit_ik_reachability.py` 输出的可达范围 JSON。
+- 使用 `config/eye_to_hand_extrinsics.yaml` 里的 `T_camera_base`，把 `base_link` 坐标转换到相机坐标。
+- 使用 `camera_info.yaml` 的内参，把相机三维点投影成像素坐标。
+- 输出相机坐标/像素坐标 CSV、JSON，以及带圈选区域的 SVG 图。
+
+示例：
+
+```bash
+python 08_project_reachability_to_camera.py \
+  --reachability-json outputs/reachability/spark_tip_down_box_region.json \
+  --output-stem spark_tip_down_box_region_camera_overlay
+```
+
+输出：
+
+```text
+outputs/reachability_camera/*_camera_overlay.csv
+outputs/reachability_camera/*_camera_overlay.json
+outputs/reachability_camera/*_camera_overlay.svg
+```
+
+说明：当前投影使用针孔模型，未额外做畸变校正；用于大概圈出可达区域足够，精确像素边界需要用当前实时图像和完整相机模型复核。
+
 ## 共享函数说明
 
 共享函数在 `lib/piper_sdk_control_utils.py`，移动和读取脚本都使用这里的 TCP 计算。
