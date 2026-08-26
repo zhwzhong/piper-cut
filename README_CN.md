@@ -6,6 +6,8 @@
 - 移动到某一个 TCP 点：`03_move_to_probe_tip_point.py`
 - 移动到某一个 TCP 位姿：`04_move_to_probe_tip_pose.py`
 - 恢复 SDK 可控模式：`05_restore_sdk_control_mode.py`
+- 粗略扫描 TCP 可达范围：`06_scan_reachability_workspace.py`
+- 使用 MoveIt2 `/compute_ik` 扫描 IK 可达范围：`07_scan_moveit_ik_reachability.py`
 - 所有脚本参数、输入输出字段和共享函数说明
 
 服务器使用：

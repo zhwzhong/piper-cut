@@ -346,6 +346,109 @@ python 05_restore_sdk_control_mode.py \
 | `motion_status` | 当前运动状态。 |
 | `err_code` | 控制器错误码，期望为 0。 |
 
+### 6. 粗略扫描 TCP 可达范围
+
+脚本：
+
+```bash
+python 06_scan_reachability_workspace.py
+```
+
+功能：
+
+- 不发送运动命令，只做离线可达范围扫描。
+- 输入 TCP 尖端的 X/Y/Z 范围和固定姿态 RPY。
+- 使用当前 TCP 标定，把 TCP 目标反算成 SDK 法兰目标。
+- 检查 TCP 目标、法兰目标、安全工作空间、半径范围和 `EndPoseCtrl` 命令范围。
+- 输出 `outputs/reachability/*.json` 和 `*.csv`，用于查看哪些采样点通过了保守可达过滤。
+
+常用参数：
+
+| 参数 | 默认值 | 说明 |
+| --- | --- | --- |
+| `--x-range-mm` | `150,650,25` | X 扫描范围，格式 `min,max,step`，单位 mm。 |
+| `--y-range-mm` | `-300,300,25` | Y 扫描范围，格式 `min,max,step`，单位 mm。 |
+| `--z-range-mm` | `80,220,20` | Z 扫描范围，格式 `min,max,step`，单位 mm。 |
+| `--orientation-source` | `fixed` | 姿态来源，`fixed` 使用 `--rx/--ry/--rz`，`current` 需要连接机械臂读取当前 TCP 姿态。 |
+| `--rx --ry --rz` | `173,-5,163` | 固定 TCP 姿态，单位度。 |
+| `--connect` | 关闭 | 连接机械臂读取当前 TCP 位姿和状态；不会使能，也不会运动。 |
+| `--tcp-calibration` | `config/tcp_offset_m_rad.yaml` | TCP 标定文件。 |
+| `--x-min-mm ... --z-max-mm` | 项目安全范围 | TCP 和法兰目标的安全工作空间。 |
+| `--min-radius-mm --max-radius-mm` | `80,626` | 粗略半径过滤，默认最大半径按 PiPER 约 626 mm 工作半径设置。 |
+
+离线扫描箱子附近区域：
+
+```bash
+python 06_scan_reachability_workspace.py \
+  --x-range-mm 250,550,10 \
+  --y-range-mm -180,180,10 \
+  --z-range-mm 99,160,10 \
+  --rx 173 --ry -5 --rz 163
+```
+
+连接机械臂读取当前姿态后扫描：
+
+```bash
+python 06_scan_reachability_workspace.py \
+  --connect \
+  --x-range-mm 250,550,10 \
+  --y-range-mm -180,180,10 \
+  --z-range-mm 99,160,10
+```
+
+注意：这个脚本不是控制器内部 IK，也不会判断关节角连续性和奇异位形。它只能过滤明显不合理的 TCP/法兰目标。真正 IK 可达性需要 URDF/DH + IK 求解器，或在安全高度、小步长、低速条件下做真机验证。
+
+### 7. 使用 MoveIt2 扫描 IK 可达范围
+
+脚本：
+
+```bash
+python 07_scan_moveit_ik_reachability.py
+```
+
+功能：
+
+- 不执行轨迹，只调用 MoveIt2 的 `/compute_ik` 服务。
+- 输入 TCP 目标的 X/Y/Z 网格和固定 RPY 姿态。
+- 输出每个采样点的 `ik_ok` 和 MoveIt 错误码。
+- 可选 `--check-plan`，在 IK 成功后继续调用 `/plan_kinematic_path` 检查从当前状态到该 IK 解是否能规划。
+
+在 spark 上使用前需要先加载 ROS2 和 PiPER 工作区：
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/real_robot_control/piper_ws/install/setup.bash
+```
+
+还需要另一个终端先启动 MoveIt2/机械臂状态发布，使 `/compute_ik`、`/joint_states` 可用。可以参考 spark 上已有脚本：
+
+```bash
+~/Desktop/PIPER_Orbbec_Box_Cutting_Release_20260813_upload_20260815/box_cutting_pipeline/start_piper_moveit_follow.sh
+```
+
+扫描箱子附近区域：
+
+```bash
+python 07_scan_moveit_ik_reachability.py \
+  --x-range-mm=250,550,20 \
+  --y-range-mm=-180,180,20 \
+  --z-range-mm=99,180,20 \
+  --rx 173 --ry -5 --rz 163
+```
+
+同时检查规划：
+
+```bash
+python 07_scan_moveit_ik_reachability.py \
+  --x-range-mm=250,550,20 \
+  --y-range-mm=-180,180,20 \
+  --z-range-mm=99,180,20 \
+  --rx 173 --ry -5 --rz 163 \
+  --check-plan
+```
+
+负数范围建议用等号写法，例如 `--y-range-mm=-180,180,20`，否则命令行解析可能把负数当成新参数。
+
 ## 共享函数说明
 
 共享函数在 `lib/piper_sdk_control_utils.py`，移动和读取脚本都使用这里的 TCP 计算。
