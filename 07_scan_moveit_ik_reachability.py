@@ -73,6 +73,158 @@ def quat_from_euler_xyz_deg(rx_deg: float, ry_deg: float, rz_deg: float) -> tupl
     )
 
 
+def quat_from_matrix(matrix: list[list[float]]) -> tuple[float, float, float, float]:
+    m00, m01, m02 = matrix[0]
+    m10, m11, m12 = matrix[1]
+    m20, m21, m22 = matrix[2]
+    trace = m00 + m11 + m22
+    if trace > 0.0:
+        s = math.sqrt(trace + 1.0) * 2.0
+        qw = 0.25 * s
+        qx = (m21 - m12) / s
+        qy = (m02 - m20) / s
+        qz = (m10 - m01) / s
+    elif m00 > m11 and m00 > m22:
+        s = math.sqrt(1.0 + m00 - m11 - m22) * 2.0
+        qw = (m21 - m12) / s
+        qx = 0.25 * s
+        qy = (m01 + m10) / s
+        qz = (m02 + m20) / s
+    elif m11 > m22:
+        s = math.sqrt(1.0 + m11 - m00 - m22) * 2.0
+        qw = (m02 - m20) / s
+        qx = (m01 + m10) / s
+        qy = 0.25 * s
+        qz = (m12 + m21) / s
+    else:
+        s = math.sqrt(1.0 + m22 - m00 - m11) * 2.0
+        qw = (m10 - m01) / s
+        qx = (m02 + m20) / s
+        qy = (m12 + m21) / s
+        qz = 0.25 * s
+    norm = math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
+    return (qx / norm, qy / norm, qz / norm, qw / norm)
+
+
+def matrix_to_euler_xyz_deg(matrix: list[list[float]]) -> tuple[float, float, float]:
+    m20 = max(-1.0, min(1.0, matrix[2][0]))
+    if abs(m20) < 0.999999:
+        pitch = math.asin(-m20)
+        roll = math.atan2(matrix[2][1], matrix[2][2])
+        yaw = math.atan2(matrix[1][0], matrix[0][0])
+    else:
+        pitch = math.asin(-m20)
+        roll = 0.0
+        yaw = math.atan2(-matrix[0][1], matrix[1][1])
+    return tuple(math.degrees(value) for value in (roll, pitch, yaw))
+
+
+def dot(a: tuple[float, float, float], b: tuple[float, float, float]) -> float:
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+
+def cross(a: tuple[float, float, float], b: tuple[float, float, float]) -> tuple[float, float, float]:
+    return (
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    )
+
+
+def normalize(v: tuple[float, float, float]) -> tuple[float, float, float]:
+    length = math.sqrt(dot(v, v))
+    if length <= 1.0e-12:
+        raise ValueError("Cannot normalize zero-length vector")
+    return (v[0] / length, v[1] / length, v[2] / length)
+
+
+def axis_vector(axis: str, sign: int) -> tuple[float, float, float]:
+    base = {
+        "x": (1.0, 0.0, 0.0),
+        "y": (0.0, 1.0, 0.0),
+        "z": (0.0, 0.0, 1.0),
+    }[axis]
+    return (base[0] * sign, base[1] * sign, base[2] * sign)
+
+
+def orthonormal_basis_from_axis(axis: tuple[float, float, float]) -> tuple[tuple[float, float, float], tuple[float, float, float], tuple[float, float, float]]:
+    w = normalize(axis)
+    reference = (1.0, 0.0, 0.0) if abs(w[0]) < 0.9 else (0.0, 1.0, 0.0)
+    projected = (
+        reference[0] - dot(reference, w) * w[0],
+        reference[1] - dot(reference, w) * w[1],
+        reference[2] - dot(reference, w) * w[2],
+    )
+    u = normalize(projected)
+    v = cross(w, u)
+    return u, v, w
+
+
+def matmul_abt(a: list[list[float]], b: list[list[float]]) -> list[list[float]]:
+    return [[sum(a[i][k] * b[j][k] for k in range(3)) for j in range(3)] for i in range(3)]
+
+
+def columns_to_matrix(columns: tuple[tuple[float, float, float], tuple[float, float, float], tuple[float, float, float]]) -> list[list[float]]:
+    return [[columns[col][row] for col in range(3)] for row in range(3)]
+
+
+def direction_near_down(tilt_deg: float, azimuth_deg: float) -> tuple[float, float, float]:
+    tilt = math.radians(tilt_deg)
+    azimuth = math.radians(azimuth_deg)
+    return normalize(
+        (
+            math.sin(tilt) * math.cos(azimuth),
+            math.sin(tilt) * math.sin(azimuth),
+            -math.cos(tilt),
+        )
+    )
+
+
+def orientation_for_tool_axis(
+    tool_axis: tuple[float, float, float],
+    world_direction: tuple[float, float, float],
+    roll_about_tool_deg: float,
+) -> tuple[tuple[float, float, float, float], tuple[float, float, float], list[list[float]]]:
+    local_u, local_v, local_w = orthonormal_basis_from_axis(tool_axis)
+    local_basis = columns_to_matrix((local_u, local_v, local_w))
+    world_w = normalize(world_direction)
+    world_u0, world_v0, _ = orthonormal_basis_from_axis(world_w)
+    roll = math.radians(roll_about_tool_deg)
+    world_u = (
+        math.cos(roll) * world_u0[0] + math.sin(roll) * world_v0[0],
+        math.cos(roll) * world_u0[1] + math.sin(roll) * world_v0[1],
+        math.cos(roll) * world_u0[2] + math.sin(roll) * world_v0[2],
+    )
+    world_v = cross(world_w, world_u)
+    world_basis = columns_to_matrix((world_u, world_v, world_w))
+    matrix = matmul_abt(world_basis, local_basis)
+    return quat_from_matrix(matrix), matrix_to_euler_xyz_deg(matrix), matrix
+
+
+def tip_down_candidates(args: argparse.Namespace) -> list[dict[str, Any]]:
+    tool_axis = axis_vector(args.tool_axis, args.tool_axis_sign)
+    candidates: list[dict[str, Any]] = []
+    tilt = 0.0
+    while tilt <= args.max_tilt_deg + 1.0e-9:
+        azimuths = [0.0] if abs(tilt) <= 1.0e-9 else values_mm((0.0, 360.0 - args.azimuth_step_deg, args.azimuth_step_deg))
+        for azimuth in azimuths:
+            direction = direction_near_down(tilt, azimuth)
+            roll_values = values_mm((0.0, 360.0 - args.roll_step_deg, args.roll_step_deg))
+            for roll in roll_values:
+                quat, rpy, _matrix = orientation_for_tool_axis(tool_axis, direction, roll)
+                candidates.append(
+                    {
+                        "tilt_deg": round(tilt, 6),
+                        "azimuth_deg": round(azimuth, 6),
+                        "roll_about_tool_deg": round(roll, 6),
+                        "quat_xyzw": quat,
+                        "rpy_deg": [round(rpy[0], 6), round(rpy[1], 6), round(rpy[2], 6)],
+                    }
+                )
+        tilt += args.tilt_step_deg
+    return candidates
+
+
 def duration_msg(seconds: float) -> Duration:
     sec = int(math.floor(seconds))
     nanosec = int((seconds - sec) * 1_000_000_000)
@@ -128,13 +280,19 @@ class MoveItReachabilityScanner(Node):
         state.joint_state = deepcopy(self.selected_joint_state())
         return state
 
-    def target_pose(self, x_mm: float, y_mm: float, z_mm: float) -> PoseStamped:
+    def target_pose(
+        self,
+        x_mm: float,
+        y_mm: float,
+        z_mm: float,
+        quat_xyzw: tuple[float, float, float, float] | None = None,
+    ) -> PoseStamped:
         target = PoseStamped()
         target.header.frame_id = self.args.frame
         target.pose.position.x = float(x_mm) / 1000.0
         target.pose.position.y = float(y_mm) / 1000.0
         target.pose.position.z = float(z_mm) / 1000.0
-        qx, qy, qz, qw = quat_from_euler_xyz_deg(self.args.rx, self.args.ry, self.args.rz)
+        qx, qy, qz, qw = quat_xyzw or quat_from_euler_xyz_deg(self.args.rx, self.args.ry, self.args.rz)
         target.pose.orientation.x = qx
         target.pose.orientation.y = qy
         target.pose.orientation.z = qz
@@ -191,6 +349,7 @@ class MoveItReachabilityScanner(Node):
         xs = values_mm(parse_range_mm(self.args.x_range_mm, "x-range-mm"))
         ys = values_mm(parse_range_mm(self.args.y_range_mm, "y-range-mm"))
         zs = values_mm(parse_range_mm(self.args.z_range_mm, "z-range-mm"))
+        orientation_candidates = tip_down_candidates(self.args) if self.args.prefer_tip_down else []
         points: list[dict[str, Any]] = []
         ik_count = 0
         plan_count = 0
@@ -200,8 +359,23 @@ class MoveItReachabilityScanner(Node):
             per_z[z_key] = {"total": 0, "ik": 0, "plan": 0}
             for y in ys:
                 for x in xs:
-                    target = self.target_pose(x, y, z)
-                    ik_ok, ik_code, solution = self.solve_ik(target)
+                    tried_orientations = 1
+                    selected_orientation: dict[str, Any] | None = None
+                    if self.args.prefer_tip_down:
+                        ik_ok = False
+                        ik_code = 99999
+                        solution = None
+                        tried_orientations = 0
+                        for candidate in orientation_candidates:
+                            tried_orientations += 1
+                            target = self.target_pose(x, y, z, candidate["quat_xyzw"])
+                            ik_ok, ik_code, solution = self.solve_ik(target)
+                            if ik_ok:
+                                selected_orientation = candidate
+                                break
+                    else:
+                        target = self.target_pose(x, y, z)
+                        ik_ok, ik_code, solution = self.solve_ik(target)
                     plan_ok = None
                     plan_code = None
                     if ik_ok:
@@ -215,7 +389,9 @@ class MoveItReachabilityScanner(Node):
                     points.append(
                         {
                             "xyz_mm": [x, y, z],
-                            "rpy_deg": [self.args.rx, self.args.ry, self.args.rz],
+                            "rpy_deg": selected_orientation["rpy_deg"] if selected_orientation else [self.args.rx, self.args.ry, self.args.rz],
+                            "tip_down": selected_orientation,
+                            "tried_orientations": tried_orientations,
                             "ik_ok": ik_ok,
                             "ik_error_code": ik_code,
                             "plan_ok": plan_ok,
@@ -232,6 +408,13 @@ class MoveItReachabilityScanner(Node):
             "pose_link": self.args.pose_link,
             "avoid_collisions": self.args.avoid_collisions,
             "check_plan": self.args.check_plan,
+            "prefer_tip_down": self.args.prefer_tip_down,
+            "tool_axis": self.args.tool_axis,
+            "tool_axis_sign": self.args.tool_axis_sign,
+            "max_tilt_deg": self.args.max_tilt_deg if self.args.prefer_tip_down else None,
+            "tilt_step_deg": self.args.tilt_step_deg if self.args.prefer_tip_down else None,
+            "azimuth_step_deg": self.args.azimuth_step_deg if self.args.prefer_tip_down else None,
+            "roll_step_deg": self.args.roll_step_deg if self.args.prefer_tip_down else None,
             "scan_ranges_mm": {
                 "x": self.args.x_range_mm,
                 "y": self.args.y_range_mm,
@@ -253,9 +436,40 @@ class MoveItReachabilityScanner(Node):
 def write_csv(path: Path, report: dict[str, Any]) -> None:
     with path.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
-        writer.writerow(["x_mm", "y_mm", "z_mm", "rx_deg", "ry_deg", "rz_deg", "ik_ok", "ik_error_code", "plan_ok", "plan_error_code"])
+        writer.writerow(
+            [
+                "x_mm",
+                "y_mm",
+                "z_mm",
+                "rx_deg",
+                "ry_deg",
+                "rz_deg",
+                "tip_tilt_deg",
+                "tip_azimuth_deg",
+                "roll_about_tool_deg",
+                "tried_orientations",
+                "ik_ok",
+                "ik_error_code",
+                "plan_ok",
+                "plan_error_code",
+            ]
+        )
         for point in report["points"]:
-            writer.writerow([*point["xyz_mm"], *point["rpy_deg"], int(point["ik_ok"]), point["ik_error_code"], point["plan_ok"], point["plan_error_code"]])
+            tip_down = point.get("tip_down") or {}
+            writer.writerow(
+                [
+                    *point["xyz_mm"],
+                    *point["rpy_deg"],
+                    tip_down.get("tilt_deg"),
+                    tip_down.get("azimuth_deg"),
+                    tip_down.get("roll_about_tool_deg"),
+                    point.get("tried_orientations", 1),
+                    int(point["ik_ok"]),
+                    point["ik_error_code"],
+                    point["plan_ok"],
+                    point["plan_error_code"],
+                ]
+            )
 
 
 def parse_args() -> argparse.Namespace:
@@ -266,6 +480,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rx", type=float, default=173.0)
     parser.add_argument("--ry", type=float, default=-5.0)
     parser.add_argument("--rz", type=float, default=163.0)
+    parser.add_argument("--prefer-tip-down", action="store_true", help="sample orientations and prefer the TCP tool axis closest to base_link -Z")
+    parser.add_argument("--tool-axis", choices=("x", "y", "z"), default="z", help="TCP local axis that points along the probe direction")
+    parser.add_argument("--tool-axis-sign", type=int, choices=(-1, 1), default=1, help="sign of the TCP probe axis; default +Z")
+    parser.add_argument("--max-tilt-deg", type=float, default=30.0, help="maximum allowed angle between probe axis and base_link -Z")
+    parser.add_argument("--tilt-step-deg", type=float, default=10.0)
+    parser.add_argument("--azimuth-step-deg", type=float, default=30.0)
+    parser.add_argument("--roll-step-deg", type=float, default=45.0)
     parser.add_argument("--group", default="arm")
     parser.add_argument("--pose-link", default="tcp_link")
     parser.add_argument("--frame", default="base_link")
@@ -282,7 +503,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--state-timeout", type=float, default=10.0)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--output-stem", default="")
-    return parser.parse_args()
+    args = parser.parse_args()
+    for name in ("tilt_step_deg", "azimuth_step_deg", "roll_step_deg"):
+        if getattr(args, name) <= 0:
+            parser.error(f"--{name.replace('_', '-')} must be > 0")
+    if args.max_tilt_deg < 0:
+        parser.error("--max-tilt-deg must be >= 0")
+    return args
 
 
 def main() -> int:
@@ -302,7 +529,15 @@ def main() -> int:
         print("=== MoveIt2 IK reachability scan ===")
         print("mode: /compute_ik only; no execution")
         print(f"frame={args.frame} group={args.group} pose_link={args.pose_link}")
-        print(f"rpy_deg={[args.rx, args.ry, args.rz]}")
+        if args.prefer_tip_down:
+            print(
+                "tip_down="
+                f"axis={args.tool_axis} sign={args.tool_axis_sign} "
+                f"max_tilt={args.max_tilt_deg} step={args.tilt_step_deg} "
+                f"azimuth_step={args.azimuth_step_deg} roll_step={args.roll_step_deg}"
+            )
+        else:
+            print(f"rpy_deg={[args.rx, args.ry, args.rz]}")
         print(f"total={summary['total']} ik_ok={summary['ik_ok']} ik_ratio={summary['ik_ratio']:.3f}")
         if args.check_plan:
             print(f"plan_ok={summary['plan_ok']} plan_ratio={summary['plan_ratio']:.3f}")

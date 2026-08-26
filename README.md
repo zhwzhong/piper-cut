@@ -409,7 +409,7 @@ python 07_scan_moveit_ik_reachability.py
 功能：
 
 - 不执行轨迹，只调用 MoveIt2 的 `/compute_ik` 服务。
-- 输入 TCP 目标的 X/Y/Z 网格和固定 RPY 姿态。
+- 输入 TCP 目标的 X/Y/Z 网格，可以使用固定 RPY 姿态，也可以使用 `--prefer-tip-down` 自动搜索“探针尽量向下”的可达姿态。
 - 输出每个采样点的 `ik_ok` 和 MoveIt 错误码。
 - 可选 `--check-plan`，在 IK 成功后继续调用 `/plan_kinematic_path` 检查从当前状态到该 IK 解是否能规划。
 
@@ -435,6 +435,24 @@ python 07_scan_moveit_ik_reachability.py \
   --z-range-mm=99,180,20 \
   --rx 173 --ry -5 --rz 163
 ```
+
+扫描箱子附近区域，并让 TCP 探针轴尽量朝下：
+
+```bash
+python 07_scan_moveit_ik_reachability.py \
+  --prefer-tip-down \
+  --tool-axis z \
+  --tool-axis-sign 1 \
+  --max-tilt-deg 30 \
+  --tilt-step-deg 10 \
+  --azimuth-step-deg 45 \
+  --roll-step-deg 90 \
+  --x-range-mm=250,550,20 \
+  --y-range-mm=-180,180,20 \
+  --z-range-mm=99,180,20
+```
+
+`--prefer-tip-down` 模式会从 0 度倾斜开始尝试，如果完全竖直向下不可达，再逐步放宽到 `--max-tilt-deg`。默认本项目的探针方向按 `tcp_link` 本地 `+Z` 轴处理，即 `--tool-axis z --tool-axis-sign 1`。
 
 同时检查规划：
 
