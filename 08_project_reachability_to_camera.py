@@ -160,7 +160,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             )
 
 
-def write_svg(path: Path, rows: list[dict[str, Any]], camera: dict[str, Any], image: Path | None, title: str) -> None:
+def write_svg(path: Path, rows: list[dict[str, Any]], camera: dict[str, Any], image: Path | None, title: str, args: argparse.Namespace) -> None:
     width = camera["width"]
     height = camera["height"]
     visible_ok = [r for r in rows if r["ik_ok"] and r["inside_image"]]
@@ -172,41 +172,43 @@ def write_svg(path: Path, rows: list[dict[str, Any]], camera: dict[str, Any], im
     ]
     if image and image.exists():
         parts.append(f'<image href="{html.escape(image.as_posix())}" x="0" y="0" width="{width}" height="{height}" preserveAspectRatio="none" opacity="0.86"/>')
-    parts.extend(
-        [
-            '<g fill="none" stroke="#60a5fa" stroke-width="1" opacity="0.25">',
-            f'<line x1="{camera["cx"]:.2f}" y1="0" x2="{camera["cx"]:.2f}" y2="{height}"/>',
-            f'<line x1="0" y1="{camera["cy"]:.2f}" x2="{width}" y2="{camera["cy"]:.2f}"/>',
-            "</g>",
-        ]
-    )
+    if args.show_camera_center:
+        parts.extend(
+            [
+                '<g fill="none" stroke="#60a5fa" stroke-width="1" opacity="0.25">',
+                f'<line x1="{camera["cx"]:.2f}" y1="0" x2="{camera["cx"]:.2f}" y2="{height}"/>',
+                f'<line x1="0" y1="{camera["cy"]:.2f}" x2="{width}" y2="{camera["cy"]:.2f}"/>',
+                "</g>",
+            ]
+        )
     for row in rows:
         if not row["inside_image"]:
             continue
-        radius = 2.5 if row["ik_ok"] else 1.5
+        radius = args.point_radius_px if row["ik_ok"] else max(1.0, args.point_radius_px * 0.6)
         opacity = 0.72 if row["ik_ok"] else 0.25
         parts.append(
             f'<circle cx="{row["u_px"]:.2f}" cy="{row["v_px"]:.2f}" r="{radius}" '
             f'fill="{tilt_color(row["tip_tilt_deg"], row["ik_ok"])}" fill-opacity="{opacity}" stroke="none"/>'
         )
-    if circle:
+    if circle and args.draw_region_circle:
         cx, cy, radius = circle
         parts.append(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="{radius + 18:.2f}" fill="none" stroke="#ef4444" stroke-width="5" stroke-opacity="0.9"/>')
         parts.append(f'<circle cx="{cx:.2f}" cy="{cy:.2f}" r="5" fill="#ef4444"/>')
-    parts.extend(
-        [
-            '<g font-family="Arial, sans-serif" font-size="18" font-weight="700">',
-            '<rect x="16" y="16" width="490" height="116" rx="8" fill="rgba(17,24,39,0.72)"/>',
-            '<text x="32" y="48" fill="#ffffff">Projected TCP reachability in camera frame</text>',
-            '<text x="32" y="78" fill="#bbf7d0">green: 0 deg</text>',
-            '<text x="178" y="78" fill="#bef264">lime: 10 deg</text>',
-            '<text x="318" y="78" fill="#fbbf24">orange: 20 deg</text>',
-            '<text x="32" y="108" fill="#fca5a5">red: 30 deg</text>',
-            '<text x="178" y="108" fill="#fecaca">big red circle: approximate reachable region</text>',
-            "</g>",
-            "</svg>",
-        ]
-    )
+    if args.show_legend:
+        parts.extend(
+            [
+                '<g font-family="Arial, sans-serif" font-size="18" font-weight="700">',
+                '<rect x="16" y="16" width="490" height="116" rx="8" fill="rgba(17,24,39,0.72)"/>',
+                '<text x="32" y="48" fill="#ffffff">Projected TCP reachability in camera frame</text>',
+                '<text x="32" y="78" fill="#bbf7d0">green: 0 deg</text>',
+                '<text x="178" y="78" fill="#bef264">lime: 10 deg</text>',
+                '<text x="318" y="78" fill="#fbbf24">orange: 20 deg</text>',
+                '<text x="32" y="108" fill="#fca5a5">red: 30 deg</text>',
+                '<text x="178" y="108" fill="#fecaca">big red circle: approximate reachable region</text>',
+                "</g>",
+            ]
+        )
+    parts.append("</svg>")
     path.write_text("\n".join(parts) + "\n", encoding="utf-8")
 
 
@@ -219,6 +221,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--output-stem", default="")
     parser.add_argument("--include-unreachable", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--show-legend", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--draw-region-circle", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--show-camera-center", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--point-radius-px", type=float, default=2.5)
     return parser.parse_args()
 
 
@@ -260,7 +266,7 @@ def main() -> int:
     svg_path = args.output_dir / f"{stem}.svg"
     write_csv(csv_path, rows)
     json_path.write_text(json.dumps({"camera": camera, "source": str(args.reachability_json), "points": rows}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    write_svg(svg_path, rows, camera, args.image, stem)
+    write_svg(svg_path, rows, camera, args.image, stem, args)
     visible_ok = sum(1 for row in rows if row["ik_ok"] and row["inside_image"])
     visible_total = sum(1 for row in rows if row["inside_image"])
     print("=== Reachability projected to camera ===")
