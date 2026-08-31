@@ -150,43 +150,63 @@ def main() -> int:
     with args.config.open("r", encoding="utf-8") as stream:
         config = yaml.safe_load(stream)
 
-    with OrbbecSDKCamera(
-        serial_number=str(config["camera_serial"]),
-        color_width=int(config.get("color_width", 1280)),
-        color_height=int(config.get("color_height", 720)),
-        fps=int(config.get("camera_fps", 30)),
-        warmup_frames=max(0, int(args.warmup_frames)),
-    ) as camera:
-        while True:
-            started = time.time()
-            frame = camera.wait_for_rgbd(timeout_ms=max(1, int(args.frame_timeout_ms)))
-            image = frame.color_bgr.copy()
-            if args.show_roi:
-                draw_roi_overlay(image, roi)
-            if args.show_box:
-                draw_box_overlay(image, overlays.get("box_pixels"))
-            if args.show_seam:
-                draw_seam_overlay(image, overlays.get("seam_pixels"))
-            ok, encoded = cv2.imencode(
-                ".jpg",
-                image,
-                [int(cv2.IMWRITE_JPEG_QUALITY), quality],
-            )
-            if not ok:
-                raise RuntimeError("failed to encode MJPEG frame")
-            payload = encoded.tobytes()
-            try:
-                out.write(f"--{BOUNDARY}\r\n".encode("ascii"))
-                out.write(b"Content-Type: image/jpeg\r\n")
-                out.write(f"Content-Length: {len(payload)}\r\n\r\n".encode("ascii"))
-                out.write(payload)
-                out.write(b"\r\n")
-                out.flush()
-            except BrokenPipeError:
-                return 0
-            sleep_s = frame_delay - (time.time() - started)
-            if sleep_s > 0:
-                time.sleep(sleep_s)
+    for startup_attempt in range(1, 4):
+        try:
+            with OrbbecSDKCamera(
+                serial_number=str(config["camera_serial"]),
+                color_width=int(config.get("color_width", 1280)),
+                color_height=int(config.get("color_height", 720)),
+                fps=int(config.get("camera_fps", 30)),
+                warmup_frames=max(0, int(args.warmup_frames)),
+            ) as camera:
+                missed_frames = 0
+                while True:
+                    started = time.time()
+                    try:
+                        frame = camera.wait_for_rgbd(timeout_ms=max(1, int(args.frame_timeout_ms)))
+                    except RuntimeError as error:
+                        missed_frames += 1
+                        print(f"stream frame miss {missed_frames}: {error}", file=sys.stderr, flush=True)
+                        if missed_frames >= 5:
+                            raise
+                        time.sleep(0.2)
+                        continue
+                    missed_frames = 0
+                    image = frame.color_bgr.copy()
+                    if args.show_roi:
+                        draw_roi_overlay(image, roi)
+                    if args.show_box:
+                        draw_box_overlay(image, overlays.get("box_pixels"))
+                    if args.show_seam:
+                        draw_seam_overlay(image, overlays.get("seam_pixels"))
+                    ok, encoded = cv2.imencode(
+                        ".jpg",
+                        image,
+                        [int(cv2.IMWRITE_JPEG_QUALITY), quality],
+                    )
+                    if not ok:
+                        raise RuntimeError("failed to encode MJPEG frame")
+                    payload = encoded.tobytes()
+                    try:
+                        out.write(f"--{BOUNDARY}\r\n".encode("ascii"))
+                        out.write(b"Content-Type: image/jpeg\r\n")
+                        out.write(f"Content-Length: {len(payload)}\r\n\r\n".encode("ascii"))
+                        out.write(payload)
+                        out.write(b"\r\n")
+                        out.flush()
+                    except BrokenPipeError:
+                        return 0
+                    sleep_s = frame_delay - (time.time() - started)
+                    if sleep_s > 0:
+                        time.sleep(sleep_s)
+        except BrokenPipeError:
+            return 0
+        except Exception as error:
+            print(f"stream startup attempt {startup_attempt} failed: {error}", file=sys.stderr, flush=True)
+            if startup_attempt >= 3:
+                raise
+            time.sleep(3.0)
+    return 1
 
 
 if __name__ == "__main__":

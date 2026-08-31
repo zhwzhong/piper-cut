@@ -1,13 +1,15 @@
 :root {
-  --bg: #f4f6f8;
+  --bg: #eef2f6;
   --panel: #ffffff;
   --ink: #17202a;
   --muted: #647182;
   --line: #d7dee8;
   --blue: #2276d2;
+  --blue-dark: #155da8;
   --green: #15845b;
   --red: #b42318;
   --amber: #b7791f;
+  --soft: #f8fafc;
 }
 
 * {
@@ -23,16 +25,16 @@ body {
 
 .app-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: minmax(0, 1fr) 400px;
   height: 100vh;
   overflow: hidden;
 }
 
 .viewport {
-  padding: 20px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
   min-height: 0;
   overflow: auto;
@@ -47,7 +49,7 @@ body {
 
 h1 {
   margin: 0 0 4px;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 0;
 }
@@ -61,8 +63,9 @@ h1 {
 .roi-fields {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 label {
@@ -82,12 +85,12 @@ select {
   background: #fff;
   color: var(--ink);
   border-radius: 6px;
-  min-height: 34px;
+  min-height: 32px;
   padding: 6px 8px;
 }
 
 .roi-fields input {
-  width: 72px;
+  width: 66px;
 }
 
 #targetZMin {
@@ -113,7 +116,7 @@ select {
 .image-stage {
   position: relative;
   overflow: hidden;
-  background: #101418;
+  background: #0d1117;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
@@ -121,7 +124,7 @@ select {
   aspect-ratio: 16 / 9;
   width: 100%;
   min-height: 0;
-  max-height: min(60vh, calc((100vw - 440px) * 9 / 16));
+  max-height: min(62vh, calc((100vw - 460px) * 9 / 16));
   flex: 0 0 auto;
 }
 
@@ -160,10 +163,26 @@ pre {
 
 .control-panel {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  padding-bottom: 18px;
+}
+
+.command-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  position: sticky;
+  top: -18px;
+  z-index: 5;
+  padding: 10px 0;
+  background: var(--bg);
+}
+
+.control-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   align-items: start;
   gap: 12px;
-  padding-bottom: 20px;
 }
 
 .output-panel {
@@ -190,8 +209,16 @@ h2 {
   letter-spacing: 0;
 }
 
+h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
 button {
-  min-height: 42px;
+  min-height: 38px;
   border: 1px solid var(--line);
   background: #fff;
   color: var(--ink);
@@ -215,6 +242,11 @@ button.primary {
   background: var(--blue);
   color: #fff;
   border-color: var(--blue);
+}
+
+button.primary:hover {
+  background: var(--blue-dark);
+  border-color: var(--blue-dark);
 }
 
 button.warning {
@@ -259,9 +291,14 @@ button.active {
 .pose-panel {
   padding: 12px;
   border: 1px solid var(--line);
+  background: var(--panel);
   border-radius: 8px;
   display: grid;
   gap: 8px;
+}
+
+.compact-panel {
+  align-content: start;
 }
 
 .pose-panel input,
@@ -313,6 +350,16 @@ button.active {
   touch-action: none;
 }
 
+@media (max-width: 1180px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+
+  .command-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 920px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -326,6 +373,22 @@ button.active {
 
   .image-stage {
     max-height: none;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .roi-fields {
+    justify-content: flex-start;
+  }
+
+  .command-strip {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    background: transparent;
+    padding: 0;
   }
 
   .output-panel {

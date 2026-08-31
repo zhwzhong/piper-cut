@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PIPER ROI Control</title>
-    <link rel="stylesheet" href="/static/app.css?v=20260831-controls-bottom-output-right" />
+    <link rel="stylesheet" href="/static/app.css?v=20260831-console-layout-stream-retry" />
   </head>
   <body>
     <main class="app-shell">
@@ -45,115 +45,132 @@
 
 
         <section class="control-panel">
-        <button id="helpBtn">参数说明</button>
-        <button id="runSequenceBtn" class="primary">一键执行</button>
-        <button id="captureBtn" class="primary">拍摄 ROI</button>
-        <button id="detectBtn">检测中线</button>
-        <div class="pose-panel">
-          <p class="lock-note">下面是图像像素 (u,v)，仅用于校准中线，不是机械臂 TCP 坐标。</p>
-          <label>图像起点 (u, v) px</label>
-          <div class="line-grid">
-            <input id="lineStartX" type="number" step="0.1" placeholder="start x" />
-            <input id="lineStartY" type="number" step="0.1" placeholder="start y" />
+          <div class="command-strip">
+            <button id="runSequenceBtn" class="primary">一键执行</button>
+            <button id="captureBtn" class="primary">拍摄 ROI</button>
+            <button id="detectBtn">检测中线</button>
+            <button id="poseBtn">获取 TCP 坐标</button>
+            <button id="restoreBtn" class="warning">恢复 SDK</button>
+            <button id="helpBtn">参数说明</button>
           </div>
-          <label>图像终点 (u, v) px</label>
-          <div class="line-grid">
-            <input id="lineEndX" type="number" step="0.1" placeholder="end x" />
-            <input id="lineEndY" type="number" step="0.1" placeholder="end y" />
-          </div>
-          <div class="segmented">
-            <button id="selectLineBtn">校准线段</button>
-            <button id="applyLineBtn">确认校准</button>
-          </div>
-        </div>
-        <div class="pose-panel">
-          <p class="lock-note">机械臂 base_link 下的探针尖端目标（只读，单位 mm）</p>
-          <label>中线起点 TCP</label>
-          <div class="xyz-grid">
-            <label>X mm <input id="baseStartX" type="number" readonly /></label>
-            <label>Y mm <input id="baseStartY" type="number" readonly /></label>
-            <label>Z mm <input id="baseStartZ" type="number" readonly /></label>
-          </div>
-          <label>中线终点 TCP</label>
-          <div class="xyz-grid">
-            <label>X mm <input id="baseEndX" type="number" readonly /></label>
-            <label>Y mm <input id="baseEndY" type="number" readonly /></label>
-            <label>Z mm <input id="baseEndZ" type="number" readonly /></label>
-          </div>
-        </div>
-        <button id="poseBtn">获取 TCP 坐标</button>
-        <div class="pose-panel">
-          <div class="xyz-grid">
-            <label>X mm <input id="targetX" type="number" step="0.1" placeholder="350" /></label>
-            <label>Y mm <input id="targetY" type="number" step="0.1" placeholder="-80" /></label>
-            <label>Z mm <input id="targetZ" type="number" step="0.1" placeholder="30" /></label>
-          </div>
-          <button id="moveXyzBtn">移动到 XYZ</button>
-        </div>
-        <div class="pose-panel">
-          <label>点位名称 <input id="poseName" type="text" value="point_1" /></label>
-          <select id="savedPoseSelect" title="saved poses">
-            <option value="">暂无保存点位</option>
-          </select>
-          <div class="segmented">
-            <button id="savePoseBtn">保存点位</button>
-            <button id="movePoseBtn">回到点位</button>
-          </div>
-          <button id="deletePoseBtn" class="danger">清除点位</button>
-        </div>
-        <div class="pose-panel">
-          <label class="switch"><input id="threeCutToggle" type="checkbox" /> 三线切割</label>
-          <label>端部线 px <input id="sideCutPx" type="number" value="90" min="20" max="240" step="5" /></label>
-          <button id="buildThreeLinesBtn">生成三线</button>
-          <label>三线点位
-            <select id="threeCutPointSelect" title="three cut points">
-              <option value="">先生成三线</option>
-            </select>
-          </label>
-          <button id="moveThreeCutPointBtn">到选中点</button>
-          <button id="moveThreeCutAllBtn">一键 A-F</button>
-        </div>
-        <div class="pose-panel">
-          <label class="switch"><input id="segmentToggle" type="checkbox" checked /> 启用分段</label>
-          <label>分段 mm <input id="segmentMm" type="number" value="30" min="5" max="200" step="5" /></label>
-          <div class="segmented">
-            <button id="moveStartBtn">到起点</button>
-            <button id="moveEndBtn">分段到终点</button>
-          </div>
-        </div>
-        <div class="pose-panel">
-          <button id="captureValidationBtn">拍摄标定板</button>
-          <button id="validationPointBtn">选择验证点</button>
-          <button id="validationErrorBtn">计算误差</button>
-        </div>
 
-        <div class="lock-row">
-          <label><input id="executeToggle" type="checkbox" checked /> 允许运动</label>
-          <label>运动模式
-            <select id="motionMode">
-              <option value="moveL">moveL 直线</option>
-              <option value="moveP" selected>moveP 点到点</option>
-            </select>
-          </label>
-          <p class="lock-note">勾选后网页自动发送确认词</p>
-        </div>
-        <button id="restoreBtn" class="warning">恢复 SDK</button>
+          <div class="control-groups">
+            <div class="pose-panel compact-panel">
+              <h3>中线校准</h3>
+              <p class="lock-note">图像像素 (u,v)，不是机械臂 TCP 坐标。</p>
+              <label>图像起点 (u, v) px</label>
+              <div class="line-grid">
+                <input id="lineStartX" type="number" step="0.1" placeholder="start x" />
+                <input id="lineStartY" type="number" step="0.1" placeholder="start y" />
+              </div>
+              <label>图像终点 (u, v) px</label>
+              <div class="line-grid">
+                <input id="lineEndX" type="number" step="0.1" placeholder="end x" />
+                <input id="lineEndY" type="number" step="0.1" placeholder="end y" />
+              </div>
+              <div class="segmented">
+                <button id="selectLineBtn">校准线段</button>
+                <button id="applyLineBtn">确认校准</button>
+              </div>
+            </div>
 
-        <div class="jog-panel">
-          <div class="jog-settings">
-            <label>步长 mm <input id="stepMm" type="number" value="1" min="0.2" max="20" step="0.2" /></label>
-            <label>速度 % <input id="speedPercent" type="number" value="5" min="1" max="100" /></label>
-            <label>步频 ms <input id="jogIntervalMs" type="number" value="80" min="50" max="1000" step="10" /></label>
+            <div class="pose-panel compact-panel">
+              <h3>中线目标</h3>
+              <p class="lock-note">base_link 下的探针尖端目标，单位 mm。</p>
+              <label>中线起点 TCP</label>
+              <div class="xyz-grid">
+                <label>X mm <input id="baseStartX" type="number" readonly /></label>
+                <label>Y mm <input id="baseStartY" type="number" readonly /></label>
+                <label>Z mm <input id="baseStartZ" type="number" readonly /></label>
+              </div>
+              <label>中线终点 TCP</label>
+              <div class="xyz-grid">
+                <label>X mm <input id="baseEndX" type="number" readonly /></label>
+                <label>Y mm <input id="baseEndY" type="number" readonly /></label>
+                <label>Z mm <input id="baseEndZ" type="number" readonly /></label>
+              </div>
+            </div>
+
+            <div class="pose-panel compact-panel">
+              <h3>手动目标</h3>
+              <div class="xyz-grid">
+                <label>X mm <input id="targetX" type="number" step="0.1" placeholder="350" /></label>
+                <label>Y mm <input id="targetY" type="number" step="0.1" placeholder="-80" /></label>
+                <label>Z mm <input id="targetZ" type="number" step="0.1" placeholder="30" /></label>
+              </div>
+              <button id="moveXyzBtn">移动到 XYZ</button>
+            </div>
+
+            <div class="pose-panel compact-panel">
+              <h3>保存点位</h3>
+              <label>点位名称 <input id="poseName" type="text" value="point_1" /></label>
+              <select id="savedPoseSelect" title="saved poses">
+                <option value="">暂无保存点位</option>
+              </select>
+              <div class="segmented">
+                <button id="savePoseBtn">保存点位</button>
+                <button id="movePoseBtn">回到点位</button>
+              </div>
+              <button id="deletePoseBtn" class="danger">清除点位</button>
+            </div>
+
+            <div class="pose-panel compact-panel">
+              <h3>三线切割</h3>
+              <label class="switch"><input id="threeCutToggle" type="checkbox" /> 启用三线</label>
+              <label>端部线 px <input id="sideCutPx" type="number" value="90" min="20" max="240" step="5" /></label>
+              <button id="buildThreeLinesBtn">生成三线</button>
+              <label>三线点位
+                <select id="threeCutPointSelect" title="three cut points">
+                  <option value="">先生成三线</option>
+                </select>
+              </label>
+              <div class="segmented">
+                <button id="moveThreeCutPointBtn">到选中点</button>
+                <button id="moveThreeCutAllBtn">一键 A-F</button>
+              </div>
+            </div>
+
+            <div class="pose-panel compact-panel">
+              <h3>运动设置</h3>
+              <label class="switch"><input id="executeToggle" type="checkbox" checked /> 允许运动</label>
+              <label>运动模式
+                <select id="motionMode">
+                  <option value="moveL">moveL 直线</option>
+                  <option value="moveP" selected>moveP 点到点</option>
+                </select>
+              </label>
+              <label class="switch"><input id="segmentToggle" type="checkbox" checked /> 启用分段</label>
+              <label>分段 mm <input id="segmentMm" type="number" value="30" min="5" max="200" step="5" /></label>
+              <div class="segmented">
+                <button id="moveStartBtn">到起点</button>
+                <button id="moveEndBtn">分段到终点</button>
+              </div>
+            </div>
+
+            <div class="pose-panel compact-panel">
+              <h3>标定验证</h3>
+              <button id="captureValidationBtn">拍摄标定板</button>
+              <button id="validationPointBtn">选择验证点</button>
+              <button id="validationErrorBtn">计算误差</button>
+            </div>
+
+            <div class="pose-panel compact-panel jog-panel">
+              <h3>TCP 微调</h3>
+              <div class="jog-settings">
+                <label>步长 mm <input id="stepMm" type="number" value="1" min="0.2" max="20" step="0.2" /></label>
+                <label>速度 % <input id="speedPercent" type="number" value="5" min="1" max="100" /></label>
+                <label>步频 ms <input id="jogIntervalMs" type="number" value="80" min="50" max="1000" step="10" /></label>
+              </div>
+              <div class="jog-grid">
+                <button data-axis="z" data-dir="1">Z+</button>
+                <button data-axis="y" data-dir="1">↑ Y+</button>
+                <button data-axis="z" data-dir="-1">Z-</button>
+                <button data-axis="x" data-dir="-1">← X-</button>
+                <button data-axis="y" data-dir="-1">↓ Y-</button>
+                <button data-axis="x" data-dir="1">X+ →</button>
+              </div>
+            </div>
           </div>
-          <div class="jog-grid">
-            <button data-axis="z" data-dir="1">Z+</button>
-            <button data-axis="y" data-dir="1">↑ Y+</button>
-            <button data-axis="z" data-dir="-1">Z-</button>
-            <button data-axis="x" data-dir="-1">← X-</button>
-            <button data-axis="y" data-dir="-1">↓ Y-</button>
-            <button data-axis="x" data-dir="1">X+ →</button>
-          </div>
-        </div>
         </section>
       </section>
 
@@ -169,6 +186,6 @@
       </aside>
     </main>
 
-    <script src="/static/app.js?v=20260831-controls-bottom-output-right"></script>
+    <script src="/static/app.js?v=20260831-console-layout-stream-retry"></script>
   </body>
 </html>

@@ -2507,7 +2507,7 @@ class Handler(BaseHTTPRequestHandler):
             "--warmup-frames",
             "5",
             "--frame-timeout-ms",
-            "1500",
+            "5000",
             "--overlay-json",
             json.dumps(
                 {
