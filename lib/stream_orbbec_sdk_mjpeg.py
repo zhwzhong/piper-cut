@@ -41,9 +41,9 @@ def draw_roi_overlay(image: Any, roi: list[int]) -> None:
     green = (70, 210, 30)
     white = (255, 255, 255)
 
-    cv2.rectangle(image, (x, y), (x + w, y + h), blue, 4)
-    cv2.circle(image, (x, y), 7, yellow, -1)
-    cv2.circle(image, (24, 24), 7, yellow, -1)
+    cv2.rectangle(image, (x, y), (x + w, y + h), blue, 2)
+    cv2.circle(image, (x, y), 5, yellow, -1)
+    cv2.circle(image, (24, 24), 5, yellow, -1)
     cv2.arrowedLine(image, (24, 24), (230, 24), red, 5, tipLength=0.08)
     cv2.arrowedLine(image, (24, 24), (24, 230), green, 5, tipLength=0.08)
     label_text(image, "O (0,0)", (42, 46), yellow)
@@ -63,7 +63,7 @@ def draw_box_overlay(image: Any, box_pixels: dict[str, Any] | None) -> None:
     except (KeyError, TypeError, ValueError):
         return
     pts = np.round(points).astype(np.int32)
-    cv2.polylines(image, [pts], True, (0, 200, 255), 4, cv2.LINE_AA)
+    cv2.polylines(image, [pts], True, (0, 200, 255), 2, cv2.LINE_AA)
     center = np.mean(points, axis=0)
     label_text(
         image,
@@ -96,9 +96,9 @@ def draw_seam_overlay(image: Any, seam_pixels: dict[str, Any] | None) -> None:
                 continue
             name = str(line.get("name", "cut_line"))
             color = colors.get(name, (0, 0, 255))
-            cv2.line(image, a, b, color, 4, cv2.LINE_AA)
-            cv2.circle(image, a, 7, (0, 255, 0), -1, cv2.LINE_AA)
-            cv2.circle(image, b, 7, (255, 0, 0), -1, cv2.LINE_AA)
+            cv2.line(image, a, b, color, 2, cv2.LINE_AA)
+            cv2.circle(image, a, 5, (0, 255, 0), -1, cv2.LINE_AA)
+            cv2.circle(image, b, 5, (255, 0, 0), -1, cv2.LINE_AA)
             start_label = str(line.get("start_label") or "")
             end_label = str(line.get("end_label") or "")
             label_text(image, start_label or name, (a[0] + 10, a[1] - 10), (0, 255, 0), 0.85)
@@ -112,9 +112,9 @@ def draw_seam_overlay(image: Any, seam_pixels: dict[str, Any] | None) -> None:
         b = (int(round(float(end[0]))), int(round(float(end[1]))))
     except (KeyError, TypeError, ValueError, IndexError):
         return
-    cv2.line(image, a, b, (0, 0, 255), 4, cv2.LINE_AA)
-    cv2.circle(image, a, 7, (0, 255, 0), -1, cv2.LINE_AA)
-    cv2.circle(image, b, 7, (255, 0, 0), -1, cv2.LINE_AA)
+    cv2.line(image, a, b, (0, 0, 255), 2, cv2.LINE_AA)
+    cv2.circle(image, a, 5, (0, 255, 0), -1, cv2.LINE_AA)
+    cv2.circle(image, b, 5, (255, 0, 0), -1, cv2.LINE_AA)
     label_text(image, "seam start", (a[0] + 10, a[1] - 10), (0, 255, 0), 0.65)
     label_text(image, "seam end", (b[0] + 10, b[1] - 10), (255, 0, 0), 0.65)
 
