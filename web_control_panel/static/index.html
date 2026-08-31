@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PIPER ROI Control</title>
-    <link rel="stylesheet" href="/static/app.css?v=20260831-smooth-compact" />
+    <link rel="stylesheet" href="/static/app.css?v=20260831-manual-jog" />
   </head>
   <body>
     <main class="app-shell">
@@ -70,14 +70,27 @@
               <button id="applyLineBtn" type="button"></button>
             </div>
 
-            <div class="pose-panel compact-panel">
-              <h3>手动目标</h3>
+            <div class="pose-panel compact-panel jog-panel">
+              <h3>手动目标 / TCP 微调</h3>
               <div class="xyz-grid">
                 <label>X mm <input id="targetX" type="number" step="0.1" placeholder="350" /></label>
                 <label>Y mm <input id="targetY" type="number" step="0.1" placeholder="-80" /></label>
                 <label>Z mm <input id="targetZ" type="number" step="0.1" placeholder="30" /></label>
               </div>
               <button id="moveXyzBtn">移动到 XYZ</button>
+              <div class="jog-settings">
+                <label>步长 mm <input id="stepMm" type="number" value="1" min="0.2" max="20" step="0.2" /></label>
+                <label>速度 % <input id="speedPercent" type="number" value="5" min="1" max="100" /></label>
+                <label>步频 ms <input id="jogIntervalMs" type="number" value="80" min="50" max="1000" step="10" /></label>
+              </div>
+              <div class="jog-grid">
+                <button data-axis="z" data-dir="1">Z+</button>
+                <button data-axis="y" data-dir="1">↑ Y+</button>
+                <button data-axis="z" data-dir="-1">Z-</button>
+                <button data-axis="x" data-dir="-1">← X-</button>
+                <button data-axis="y" data-dir="-1">↓ Y-</button>
+                <button data-axis="x" data-dir="1">X+ →</button>
+              </div>
             </div>
 
             <div class="pose-panel compact-panel">
@@ -133,22 +146,6 @@
               <button id="validationErrorBtn">计算误差</button>
             </div>
 
-            <div class="pose-panel compact-panel jog-panel">
-              <h3>TCP 微调</h3>
-              <div class="jog-settings">
-                <label>步长 mm <input id="stepMm" type="number" value="1" min="0.2" max="20" step="0.2" /></label>
-                <label>速度 % <input id="speedPercent" type="number" value="5" min="1" max="100" /></label>
-                <label>步频 ms <input id="jogIntervalMs" type="number" value="80" min="50" max="1000" step="10" /></label>
-              </div>
-              <div class="jog-grid">
-                <button data-axis="z" data-dir="1">Z+</button>
-                <button data-axis="y" data-dir="1">↑ Y+</button>
-                <button data-axis="z" data-dir="-1">Z-</button>
-                <button data-axis="x" data-dir="-1">← X-</button>
-                <button data-axis="y" data-dir="-1">↓ Y-</button>
-                <button data-axis="x" data-dir="1">X+ →</button>
-              </div>
-            </div>
           </div>
         </section>
       </section>
@@ -165,6 +162,6 @@
       </aside>
     </main>
 
-    <script src="/static/app.js?v=20260831-smooth-compact"></script>
+    <script src="/static/app.js?v=20260831-manual-jog"></script>
   </body>
 </html>
