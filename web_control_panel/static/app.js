@@ -623,10 +623,24 @@ async function post(path, payload, label) {
     showCoords(data);
     showLog(data);
     $("statusText").textContent = data.ok ? "done" : "failed";
+    if (!data.ok && shouldStopStream && !shouldRestartStream) {
+      if (state.lastImageUrl) {
+        showImage(state.lastImageUrl);
+      } else if (isStreamEnabled()) {
+        restartStreamSoon(900);
+      }
+    }
     return data;
   } catch (error) {
     $("statusText").textContent = "failed";
     $("logBox").textContent = String(error);
+    if (shouldStopStream && !shouldRestartStream) {
+      if (state.lastImageUrl) {
+        showImage(state.lastImageUrl);
+      } else if (isStreamEnabled()) {
+        restartStreamSoon(900);
+      }
+    }
     return { ok: false, error: String(error) };
   } finally {
     setBusy(false, $("statusText").textContent);

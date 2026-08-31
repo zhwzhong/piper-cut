@@ -79,15 +79,35 @@ STATE: dict[str, Any] = {
 }
 
 
+def stop_process(process: Any, terminate_timeout_s: float = 3.0) -> bool:
+    """Terminate a child process and escalate to kill if it keeps the camera open."""
+    if process is None:
+        return True
+    if process.poll() is not None:
+        return True
+    try:
+        process.terminate()
+        process.wait(timeout=terminate_timeout_s)
+        return True
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=2.0)
+        return False
+    except Exception:
+        return False
+
+
 def claim_stream_request() -> tuple[int, bool]:
     global STREAM_EPOCH
+    process = None
     with STREAM_STATE_LOCK:
         STREAM_EPOCH += 1
+        epoch = STREAM_EPOCH
         process = STREAM_PROCESS
         replaced = process is not None and process.poll() is None
-        if replaced:
-            process.terminate()
-        return STREAM_EPOCH, replaced
+    if replaced:
+        stop_process(process)
+    return epoch, replaced
 
 
 def register_stream_process(epoch: int, process: Any) -> bool:
@@ -117,7 +137,7 @@ def acquire_camera_for_command(timeout_s: float = 12.0) -> None:
     if not acquired:
         raise TimeoutError("video stream did not release camera in time")
     try:
-        time.sleep(1.0)
+        time.sleep(4.0)
         camera_acquired = CAMERA_LOCK.acquire(timeout=timeout_s)
         if not camera_acquired:
             raise TimeoutError("camera is busy")
@@ -248,8 +268,10 @@ def command_result(command: list[str], *, timeout: float | None = None) -> dict[
 
 def transient_camera_error(output: str) -> bool:
     markers = (
-        "uvc_open failed",
+        "Failed to open USB device",
+        "No such device",
         "openUsbDevice failed",
+        "uvc_open failed",
         "was not found",
         "timed out waiting for Orbbec RGB-D frames",
     )
@@ -455,8 +477,8 @@ def capture_snapshot(roi: list[int], include_detection_overlay: bool = True) -> 
                 str(CAPTURES),
             ],
             timeout=30,
-            attempts=3,
-            retry_delay_s=5.0,
+            attempts=5,
+            retry_delay_s=6.0,
         )
     finally:
         CAMERA_LOCK.release()
@@ -543,7 +565,7 @@ def detect_seam(
     if use_last_snapshot and STATE.get("last_snapshot"):
         command.extend(["--snapshot-dir", str(STATE["last_snapshot"])])
     try:
-        result = camera_command_result(command, timeout=90, attempts=3, retry_delay_s=6.0)
+        result = camera_command_result(command, timeout=90, attempts=5, retry_delay_s=8.0)
     finally:
         if not use_last_snapshot:
             CAMERA_LOCK.release()
@@ -2614,13 +2636,7 @@ class Handler(BaseHTTPRequestHandler):
             stderr=subprocess.PIPE,
         )
         if not register_stream_process(stream_epoch, process):
-            if process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=2)
+            stop_process(process)
             CAMERA_LOCK.release()
             STREAM_LOCK.release()
             self.send_json({"ok": False, "error": "video stream was replaced by a newer request"}, status=409)
@@ -2628,13 +2644,7 @@ class Handler(BaseHTTPRequestHandler):
 
         first_chunk = read_stream_chunk(process, timeout_s=32.0)
         if not first_chunk:
-            if process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=2)
+            stop_process(process)
             stderr = ""
             if process.stderr is not None:
                 stderr = process.stderr.read().decode("utf-8", errors="replace").strip()
@@ -2672,13 +2682,7 @@ class Handler(BaseHTTPRequestHandler):
                 except (BrokenPipeError, ConnectionResetError):
                     break
         finally:
-            if process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=2)
+            stop_process(process)
             stderr = ""
             if process.stderr is not None:
                 stderr = process.stderr.read().decode("utf-8", errors="replace").strip()
