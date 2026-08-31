@@ -749,6 +749,8 @@ async function runOneClickSequence() {
 }
 
 async function buildThreeCutLinesWithAutoDetect() {
+  stopStream(false);
+  if (state.lastImageUrl) showImage(state.lastImageUrl);
   const payload = {
     roi: roi(),
     target_z_min_mm: targetZMinMm(),
@@ -757,10 +759,10 @@ async function buildThreeCutLinesWithAutoDetect() {
   };
   let data = await post("/api/build_three_cut_lines", payload, "building three lines...");
   if (data.ok) {
-    restartStreamSoon(900);
     return data;
   }
   if (!String(data.error || "").includes("run seam detection")) {
+    if (state.lastImageUrl) showImage(state.lastImageUrl);
     return data;
   }
   const detected = await post("/api/detect", {
@@ -771,7 +773,7 @@ async function buildThreeCutLinesWithAutoDetect() {
   }, "detecting first...");
   if (!detected.ok) return detected;
   data = await post("/api/build_three_cut_lines", payload, "building three lines...");
-  if (data.ok) restartStreamSoon(900);
+  if (!data.ok && state.lastImageUrl) showImage(state.lastImageUrl);
   return data;
 }
 

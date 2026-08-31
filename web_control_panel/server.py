@@ -972,25 +972,59 @@ def build_three_cut_lines(
     lines = three_cut_line_pixels(side_cut_px, c_inset_px, d_inset_px)
     target_lines: list[dict[str, Any]] = []
     cut_points: list[dict[str, Any]] = []
+
+    def line_with_scaled_side_cut(line: dict[str, Any], scale: float) -> dict[str, Any]:
+        if scale >= 0.999:
+            return dict(line)
+        start = [float(line["start_px"][0]), float(line["start_px"][1])]
+        end = [float(line["end_px"][0]), float(line["end_px"][1])]
+        mid = [(start[0] + end[0]) * 0.5, (start[1] + end[1]) * 0.5]
+        scaled_start = clamp_pixel([mid[0] + (start[0] - mid[0]) * scale, mid[1] + (start[1] - mid[1]) * scale])
+        scaled_end = clamp_pixel([mid[0] + (end[0] - mid[0]) * scale, mid[1] + (end[1] - mid[1]) * scale])
+        adjusted = dict(line)
+        adjusted["start_px"] = scaled_start
+        adjusted["end_px"] = scaled_end
+        adjusted["effective_side_cut_px"] = float(side_cut_px) * scale
+        adjusted["side_cut_scale"] = scale
+        return adjusted
+
+    def should_retry_shorter(result: dict[str, Any]) -> bool:
+        output = ((result.get("result") or {}).get("output") or result.get("error") or "")
+        return "valid internal seam depth samples" in str(output)
+
     for line in lines:
-        result = manual_seam_from_points(
-            line["start_px"],
-            line["end_px"],
-            roi,
-            target_z_min_mm,
-            {
-                "mode": "three_cut_line",
-                "line_name": line["name"],
-                "side_cut_px": float(side_cut_px),
-                "c_inset_px": float(c_inset_px),
-                "d_inset_px": float(d_inset_px),
-            },
-        )
+        candidate_line = dict(line)
+        result: dict[str, Any] | None = None
+        retry_scales = [1.0, 0.75, 0.5, 0.35, 0.25] if line["name"] in {"left_end", "right_end"} else [1.0]
+        for scale in retry_scales:
+            candidate_line = line_with_scaled_side_cut(line, scale)
+            result = manual_seam_from_points(
+                candidate_line["start_px"],
+                candidate_line["end_px"],
+                roi,
+                target_z_min_mm,
+                {
+                    "mode": "three_cut_line",
+                    "line_name": line["name"],
+                    "side_cut_px": float(side_cut_px),
+                    "effective_side_cut_px": float(candidate_line.get("effective_side_cut_px", side_cut_px)),
+                    "side_cut_scale": float(candidate_line.get("side_cut_scale", 1.0)),
+                    "c_inset_px": float(c_inset_px),
+                    "d_inset_px": float(d_inset_px),
+                },
+            )
+            if result.get("ok") or not should_retry_shorter(result):
+                break
         if not result.get("ok"):
+            if STATE.get("last_image_url"):
+                result["overlay_url"] = STATE["last_image_url"]
             return {
                 "ok": False,
                 "cut_mode": "three_line",
-                "failed_line": line["name"],
+                "failed_line": candidate_line["name"],
+                "failed_line_label": candidate_line["label"],
+                "last_image_url": STATE.get("last_image_url"),
+                "message": "端部线深度有效点不足，已尝试自动缩短短线但仍失败；可以增大对应 C/D 点内缩或调小端部线 px。",
                 "cut_lines": target_lines,
                 "result": result.get("result"),
             }
@@ -1001,7 +1035,7 @@ def build_three_cut_lines(
         end_mm = [float(value) * 1000.0 for value in end_m] if isinstance(end_m, list) and len(end_m) == 3 else None
         target_lines.append(
             {
-                **line,
+                **candidate_line,
                 "target_json": result["target_json"],
                 "target": result.get("target"),
             }
@@ -1009,21 +1043,21 @@ def build_three_cut_lines(
         cut_points.extend(
             [
                 {
-                    "label": line["start_label"],
-                    "line_name": line["name"],
-                    "line_label": line["label"],
+                    "label": candidate_line["start_label"],
+                    "line_name": candidate_line["name"],
+                    "line_label": candidate_line["label"],
                     "point_name": "start",
-                    "pixel_xy": line["start_px"],
+                    "pixel_xy": candidate_line["start_px"],
                     "xyz_m": start_m,
                     "xyz_mm": start_mm,
                     "target_json": result["target_json"],
                 },
                 {
-                    "label": line["end_label"],
-                    "line_name": line["name"],
-                    "line_label": line["label"],
+                    "label": candidate_line["end_label"],
+                    "line_name": candidate_line["name"],
+                    "line_label": candidate_line["label"],
                     "point_name": "end",
-                    "pixel_xy": line["end_px"],
+                    "pixel_xy": candidate_line["end_px"],
                     "xyz_m": end_m,
                     "xyz_mm": end_mm,
                     "target_json": result["target_json"],
@@ -1035,11 +1069,19 @@ def build_three_cut_lines(
     image = cv2.imread(str(paths["color"]))
     if image is None:
         raise RuntimeError(f"failed to read image: {paths['color']}")
+    pixel_lines = [
+        {
+            key: value
+            for key, value in line.items()
+            if key not in {"target", "target_json"}
+        }
+        for line in target_lines
+    ]
     seam_pixels = {
         "mode": "three_cut",
-        "start_px": lines[1]["start_px"],
-        "end_px": lines[1]["end_px"],
-        "lines": lines,
+        "start_px": pixel_lines[1]["start_px"],
+        "end_px": pixel_lines[1]["end_px"],
+        "lines": pixel_lines,
     }
     draw_roi_overlay(image, roi)
     draw_box_overlay(image, STATE.get("last_box_pixels"))
