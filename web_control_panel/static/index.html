@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PIPER ROI Control</title>
-    <link rel="stylesheet" href="/static/app.css?v=20260831-stream-release" />
+    <link rel="stylesheet" href="/static/app.css?v=20260901-three-inset" />
   </head>
   <body>
     <main class="app-shell">
@@ -110,6 +110,7 @@
               <h3>三线切割</h3>
               <label class="switch"><input id="threeCutToggle" type="checkbox" /> 启用三线</label>
               <label>端部线 px <input id="sideCutPx" type="number" value="90" min="20" max="240" step="5" /></label>
+              <label>端点内缩 px <input id="endpointInsetPx" type="number" value="20" min="0" max="120" step="5" /></label>
               <button id="buildThreeLinesBtn">生成三线</button>
               <label>三线点位
                 <select id="threeCutPointSelect" title="three cut points">
@@ -162,6 +163,6 @@
       </aside>
     </main>
 
-    <script src="/static/app.js?v=20260831-stream-release"></script>
+    <script src="/static/app.js?v=20260901-three-inset"></script>
   </body>
 </html>

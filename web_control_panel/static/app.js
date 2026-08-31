@@ -35,10 +35,12 @@ X, Y, W, H:
   勾选“启用分段”后，从起点到终点时的最大插值段长，默认 30 mm。
   系统会把起点到终点拆成多段，每段成功后才继续下一段。
 
-三线切割 / 端部线 px:
+三线切割 / 端部线 px / 端点内缩 px:
   勾选“三线切割”后，检测中线会额外生成左端短线、中间长线、右端短线。
   左边线段端点为 A/B，中间为 C/D，右边为 E/F。
   端部线 px 是左右短线的像素长度，默认 90 px，用于把胶带两端也切开。
+  端点内缩 px 会把中线两端向箱子内部收一点，默认 20 px。
+  如果 D/E/F 的 X 偏大、右侧越过箱子边缘，就调大这个值；如果切得不够到边，就调小。
   生成三线后，可通过“三线点位”下拉框选择 A-F 任一点并移动过去。
   “一键 A-F”会先移动到 point_2 的保存位姿，再按 E->F -> F->D -> D->C -> C->B -> B->A 连续执行，最后回到 point_1 的保存位姿，并使用当前分段设置。
 
@@ -179,6 +181,14 @@ function sideCutPx() {
   const value = Number($("sideCutPx").value || 90);
   if (!Number.isFinite(value) || value < 5) {
     throw new Error("端部线长度必须是正数，单位 px");
+  }
+  return value;
+}
+
+function endpointInsetPx() {
+  const value = Number($("endpointInsetPx").value || 20);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error("端点内缩必须是非负数，单位 px");
   }
   return value;
 }
@@ -677,6 +687,7 @@ async function runOneClickSequence() {
       roi: roi(),
       target_z_min_mm: targetZMinMm(),
       side_cut_px: sideCutPx(),
+      endpoint_inset_px: endpointInsetPx(),
     }, "building three lines...")) return;
   }
 
@@ -733,6 +744,7 @@ async function buildThreeCutLinesWithAutoDetect() {
     roi: roi(),
     target_z_min_mm: targetZMinMm(),
     side_cut_px: sideCutPx(),
+    endpoint_inset_px: endpointInsetPx(),
   };
   let data = await post("/api/build_three_cut_lines", payload, "building three lines...");
   if (data.ok) {
