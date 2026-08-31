@@ -364,6 +364,10 @@ function postUsesCamera(path) {
   return path === "/api/capture" || path === "/api/detect" || path === "/api/run_cut_sequence";
 }
 
+function shouldRestartStreamAfterPost(path) {
+  return path === "/api/run_cut_sequence";
+}
+
 function showLog(data) {
   if (Array.isArray(data.steps)) {
     $("logBox").textContent = data.steps.map((step, index) => {
@@ -599,8 +603,9 @@ function imagePixelFromClick(event) {
 }
 
 async function post(path, payload, label) {
-  const shouldRestartStream = isStreamEnabled() && postUsesCamera(path);
-  if (shouldRestartStream) {
+  const shouldStopStream = isStreamEnabled() && postUsesCamera(path);
+  const shouldRestartStream = shouldStopStream && shouldRestartStreamAfterPost(path);
+  if (shouldStopStream) {
     stopStream();
     await new Promise((resolve) => setTimeout(resolve, 4500));
   }

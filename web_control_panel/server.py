@@ -111,13 +111,16 @@ def clear_stream_process(process: Any) -> None:
             STREAM_PROCESS = None
 
 
-def stop_stream_for_camera(timeout_s: float = 12.0) -> None:
+def acquire_camera_for_command(timeout_s: float = 12.0) -> None:
     claim_stream_request()
     acquired = STREAM_LOCK.acquire(timeout=timeout_s)
     if not acquired:
         raise TimeoutError("video stream did not release camera in time")
     try:
         time.sleep(1.0)
+        camera_acquired = CAMERA_LOCK.acquire(timeout=timeout_s)
+        if not camera_acquired:
+            raise TimeoutError("camera is busy")
     finally:
         STREAM_LOCK.release()
 
@@ -440,8 +443,8 @@ def annotate_roi(color_path: Path, roi: list[int], include_detection_overlay: bo
 def capture_snapshot(roi: list[int], include_detection_overlay: bool = True) -> dict[str, Any]:
     ensure_dirs()
     before = {path.resolve() for path in CAPTURES.glob("snapshot_*")}
-    stop_stream_for_camera()
-    with CAMERA_LOCK:
+    acquire_camera_for_command()
+    try:
         result = camera_command_result(
             [
                 sys.executable,
@@ -455,6 +458,8 @@ def capture_snapshot(roi: list[int], include_detection_overlay: bool = True) -> 
             attempts=3,
             retry_delay_s=5.0,
         )
+    finally:
+        CAMERA_LOCK.release()
     if result["returncode"] != 0:
         return {"ok": False, "result": result}
     snapshot = newest_dir(CAPTURES, "snapshot_", before)
@@ -524,7 +529,7 @@ def detect_seam(
     ensure_dirs()
     before = {path.resolve() for path in OUTPUTS.glob("seam_run_*")}
     if not use_last_snapshot:
-        stop_stream_for_camera()
+        acquire_camera_for_command()
     command = [
         sys.executable,
         str(ROOT / "01_detect_seam_start_to_base.py"),
@@ -537,8 +542,11 @@ def detect_seam(
     ]
     if use_last_snapshot and STATE.get("last_snapshot"):
         command.extend(["--snapshot-dir", str(STATE["last_snapshot"])])
-    with CAMERA_LOCK:
-        result = camera_command_result(command, timeout=90, attempts=2, retry_delay_s=5.0)
+    try:
+        result = camera_command_result(command, timeout=90, attempts=3, retry_delay_s=6.0)
+    finally:
+        if not use_last_snapshot:
+            CAMERA_LOCK.release()
     if result["returncode"] != 0:
         return {"ok": False, "result": result}
     detection_dir = newest_dir(OUTPUTS, "seam_run_", before)
@@ -2563,6 +2571,11 @@ class Handler(BaseHTTPRequestHandler):
             return
         if replaced_stream:
             time.sleep(1.5)
+        camera_lock_acquired = CAMERA_LOCK.acquire(timeout=0.2)
+        if not camera_lock_acquired:
+            STREAM_LOCK.release()
+            self.send_json({"ok": False, "error": "camera is busy with snapshot or detection"}, status=503)
+            return
 
         command = [
             sys.executable,
@@ -2608,6 +2621,7 @@ class Handler(BaseHTTPRequestHandler):
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait(timeout=2)
+            CAMERA_LOCK.release()
             STREAM_LOCK.release()
             self.send_json({"ok": False, "error": "video stream was replaced by a newer request"}, status=409)
             return
@@ -2627,6 +2641,7 @@ class Handler(BaseHTTPRequestHandler):
             if stderr:
                 print(f"[web] stream process stderr:\n{stderr[-4000:]}", flush=True)
             clear_stream_process(process)
+            CAMERA_LOCK.release()
             STREAM_LOCK.release()
             self.send_json({"ok": False, "error": "camera stream did not produce a frame"}, status=503)
             return
@@ -2670,6 +2685,7 @@ class Handler(BaseHTTPRequestHandler):
             if stderr:
                 print(f"[web] stream process stderr:\n{stderr[-4000:]}", flush=True)
             clear_stream_process(process)
+            CAMERA_LOCK.release()
             STREAM_LOCK.release()
 
     def log_message(self, fmt: str, *args: Any) -> None:
