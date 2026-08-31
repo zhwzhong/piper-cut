@@ -150,7 +150,8 @@ def main() -> int:
     with args.config.open("r", encoding="utf-8") as stream:
         config = yaml.safe_load(stream)
 
-    for startup_attempt in range(1, 4):
+    max_startup_attempts = 6
+    for startup_attempt in range(1, max_startup_attempts + 1):
         try:
             with OrbbecSDKCamera(
                 serial_number=str(config["camera_serial"]),
@@ -203,7 +204,7 @@ def main() -> int:
             return 0
         except Exception as error:
             print(f"stream startup attempt {startup_attempt} failed: {error}", file=sys.stderr, flush=True)
-            if startup_attempt >= 3:
+            if startup_attempt >= max_startup_attempts:
                 raise
             time.sleep(3.0)
     return 1

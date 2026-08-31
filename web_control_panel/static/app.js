@@ -301,13 +301,19 @@ function streamUrl() {
 
 function startStream() {
   if (!isStreamEnabled()) return;
+  clearTimeout(state.streamTimer);
   const image = $("cameraImage");
   state.stoppingStream = false;
-  image.src = streamUrl();
   image.dataset.stream = "1";
   image.style.display = "block";
   $("emptyImage").style.display = "none";
   $("statusText").textContent = "streaming";
+  image.removeAttribute("src");
+  requestAnimationFrame(() => {
+    if (image.dataset.stream === "1" && isStreamEnabled()) {
+      image.src = streamUrl();
+    }
+  });
 }
 
 function markStreamAlive() {
@@ -319,6 +325,7 @@ function stopStream(showPlaceholder = false) {
   state.stoppingStream = true;
   const image = $("cameraImage");
   image.dataset.stream = "0";
+  image.removeAttribute("src");
   image.src = "about:blank";
   if (showPlaceholder) {
     image.style.display = "none";
@@ -346,7 +353,7 @@ function retryStreamSoon() {
   clearTimeout(state.streamTimer);
   state.streamTimer = setTimeout(() => {
     startStream();
-  }, 1000);
+  }, 1800);
 }
 
 function postUsesCamera(path) {
@@ -615,7 +622,7 @@ async function post(path, payload, label) {
   } finally {
     setBusy(false, $("statusText").textContent);
     if (shouldRestartStream) {
-      restartStreamSoon(2500);
+      restartStreamSoon(4500);
     }
   }
 }

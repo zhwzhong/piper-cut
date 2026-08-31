@@ -42,6 +42,9 @@ CONFIRM_RESTORE = "RESTORE_CONTROL_MODE"
 STREAM_BOUNDARY = "piper_frame"
 CAMERA_LOCK = threading.Lock()
 STREAM_LOCK = threading.Lock()
+STREAM_STATE_LOCK = threading.Lock()
+STREAM_PROCESS: Any = None
+STREAM_EPOCH = 0
 JOG_LOCK = threading.Lock()
 JOG_CONTROL: dict[str, Any] = {
     "stop": None,
@@ -72,6 +75,38 @@ STATE: dict[str, Any] = {
     "image_format": f"jpeg_quality_{JPEG_QUALITY}",
     "stream": "mjpeg",
 }
+
+
+def claim_stream_request() -> tuple[int, bool]:
+    global STREAM_EPOCH
+    with STREAM_STATE_LOCK:
+        STREAM_EPOCH += 1
+        process = STREAM_PROCESS
+        replaced = process is not None and process.poll() is None
+        if replaced:
+            process.terminate()
+        return STREAM_EPOCH, replaced
+
+
+def register_stream_process(epoch: int, process: Any) -> bool:
+    global STREAM_PROCESS
+    with STREAM_STATE_LOCK:
+        if epoch != STREAM_EPOCH:
+            return False
+        STREAM_PROCESS = process
+        return True
+
+
+def stream_was_replaced(epoch: int) -> bool:
+    with STREAM_STATE_LOCK:
+        return epoch != STREAM_EPOCH
+
+
+def clear_stream_process(process: Any) -> None:
+    global STREAM_PROCESS
+    with STREAM_STATE_LOCK:
+        if STREAM_PROCESS is process:
+            STREAM_PROCESS = None
 
 
 def now_id() -> str:
@@ -2487,11 +2522,16 @@ class Handler(BaseHTTPRequestHandler):
         quality = min(90, max(25, quality))
         target_fps = float(query.get("fps", ["10"])[0])
         target_fps = min(15.0, max(1.0, target_fps))
-        frame_delay = 1.0 / target_fps
 
-        if not STREAM_LOCK.acquire(timeout=0.2):
-            self.send_json({"ok": False, "error": "another video stream is already active"}, status=503)
+        stream_epoch, replaced_stream = claim_stream_request()
+        if not STREAM_LOCK.acquire(timeout=8.0):
+            self.send_json(
+                {"ok": False, "error": "video stream is busy; previous stream did not stop in time"},
+                status=503,
+            )
             return
+        if replaced_stream:
+            time.sleep(1.5)
 
         command = [
             sys.executable,
@@ -2529,6 +2569,17 @@ class Handler(BaseHTTPRequestHandler):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+        if not register_stream_process(stream_epoch, process):
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=2)
+            STREAM_LOCK.release()
+            self.send_json({"ok": False, "error": "video stream was replaced by a newer request"}, status=409)
+            return
 
         self.send_response(200)
         self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={STREAM_BOUNDARY}")
@@ -2538,6 +2589,8 @@ class Handler(BaseHTTPRequestHandler):
 
         try:
             while True:
+                if stream_was_replaced(stream_epoch):
+                    break
                 if process.stdout is None:
                     break
                 chunk = process.stdout.read(65536)
@@ -2561,6 +2614,7 @@ class Handler(BaseHTTPRequestHandler):
                 stderr = process.stderr.read().decode("utf-8", errors="replace").strip()
             if stderr:
                 print(f"[web] stream process stderr:\n{stderr[-4000:]}", flush=True)
+            clear_stream_process(process)
             STREAM_LOCK.release()
 
     def log_message(self, fmt: str, *args: Any) -> None:
