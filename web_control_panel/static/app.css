@@ -185,6 +185,10 @@ pre {
   gap: 12px;
 }
 
+.hidden-fields {
+  display: none;
+}
+
 .output-panel {
   border-left: 1px solid var(--line);
   background: var(--panel);
