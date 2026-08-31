@@ -905,6 +905,116 @@ def clamp_pixel(point: list[float]) -> list[float]:
     ]
 
 
+def point_add(a: list[float], b: list[float]) -> list[float]:
+    return [a[0] + b[0], a[1] + b[1]]
+
+
+def point_sub(a: list[float], b: list[float]) -> list[float]:
+    return [a[0] - b[0], a[1] - b[1]]
+
+
+def point_scale(a: list[float], scale: float) -> list[float]:
+    return [a[0] * scale, a[1] * scale]
+
+
+def dot2(a: list[float], b: list[float]) -> float:
+    return a[0] * b[0] + a[1] * b[1]
+
+
+def cross2(a: list[float], b: list[float]) -> float:
+    return a[0] * b[1] - a[1] * b[0]
+
+
+def intersect_infinite_line_with_segment(
+    line_point: list[float],
+    line_direction: list[float],
+    seg_start: list[float],
+    seg_end: list[float],
+) -> tuple[float, list[float]] | None:
+    edge = point_sub(seg_end, seg_start)
+    denom = cross2(line_direction, edge)
+    if abs(denom) < 1.0e-9:
+        return None
+    delta = point_sub(seg_start, line_point)
+    line_t = cross2(delta, edge) / denom
+    edge_t = cross2(delta, line_direction) / denom
+    if edge_t < -1.0e-6 or edge_t > 1.0 + 1.0e-6:
+        return None
+    point = point_add(line_point, point_scale(line_direction, line_t))
+    return line_t, clamp_pixel(point)
+
+
+def box_edges_from_state() -> list[tuple[list[float], list[float]]] | None:
+    box_pixels = STATE.get("last_box_pixels")
+    if not isinstance(box_pixels, dict):
+        return None
+    box = box_pixels.get("box_px")
+    if not isinstance(box, list) or len(box) != 4 or not all(is_xy(point) for point in box):
+        return None
+    points = [[float(point[0]), float(point[1])] for point in box]
+    return [(points[index], points[(index + 1) % 4]) for index in range(4)]
+
+
+def boundary_anchors_from_box(
+    line_start: list[float],
+    line_end: list[float],
+    direction: list[float],
+) -> tuple[list[float], int, list[float], int] | None:
+    edges = box_edges_from_state()
+    if not edges:
+        return None
+    hits: list[tuple[float, int, list[float]]] = []
+    for index, (edge_start, edge_end) in enumerate(edges):
+        hit = intersect_infinite_line_with_segment(line_start, direction, edge_start, edge_end)
+        if hit:
+            line_t, point = hit
+            if not any(math.hypot(point[0] - old[2][0], point[1] - old[2][1]) < 2.0 for old in hits):
+                hits.append((line_t, index, point))
+    if len(hits) < 2:
+        return None
+    hits.sort(key=lambda item: item[0])
+    left = hits[0]
+    right = hits[-1]
+    if math.hypot(right[2][0] - left[2][0], right[2][1] - left[2][1]) < 5.0:
+        return None
+    return left[2], left[1], right[2], right[1]
+
+
+def line_on_box_edge(
+    center: list[float],
+    edge_index: int,
+    side_cut_px: float,
+    inset_shift: list[float],
+    label_side: str,
+) -> tuple[list[float], list[float], dict[str, Any]]:
+    edges = box_edges_from_state()
+    if not edges:
+        raise ValueError("box edge is unavailable")
+    edge_start, edge_end = edges[edge_index]
+    edge_vec = point_sub(edge_end, edge_start)
+    edge_len = math.hypot(edge_vec[0], edge_vec[1])
+    if edge_len < 1.0:
+        raise ValueError("box edge is too short")
+    edge_dir = [edge_vec[0] / edge_len, edge_vec[1] / edge_len]
+    projected = dot2(point_sub(center, edge_start), edge_dir)
+    half = min(float(side_cut_px) * 0.5, edge_len * 0.5)
+    start_s = max(0.0, projected - half)
+    end_s = min(edge_len, projected + half)
+    requested = min(float(side_cut_px), edge_len)
+    if end_s - start_s < requested:
+        if start_s <= 1.0e-6:
+            end_s = min(edge_len, requested)
+        elif end_s >= edge_len - 1.0e-6:
+            start_s = max(0.0, edge_len - requested)
+    first = point_add(point_add(edge_start, point_scale(edge_dir, start_s)), inset_shift)
+    second = point_add(point_add(edge_start, point_scale(edge_dir, end_s)), inset_shift)
+    ordered = sorted([clamp_pixel(first), clamp_pixel(second)], key=lambda point: point[1])
+    top, bottom = ordered[0], ordered[-1]
+    if label_side == "left":
+        return bottom, top, {"box_edge_index": edge_index, "line_source": "box_edge"}
+    return top, bottom, {"box_edge_index": edge_index, "line_source": "box_edge"}
+
+
 def three_cut_line_pixels(side_cut_px: float, c_inset_px: float = 0.0, d_inset_px: float = 0.0) -> list[dict[str, Any]]:
     seam_pixels = STATE.get("last_seam_pixels")
     if not isinstance(seam_pixels, dict) or not is_xy(seam_pixels.get("start_px")) or not is_xy(seam_pixels.get("end_px")):
@@ -922,12 +1032,38 @@ def three_cut_line_pixels(side_cut_px: float, c_inset_px: float = 0.0, d_inset_p
     direction = [dx / length, dy / length]
     perp = [-dy / length, dx / length]
     half = float(side_cut_px) * 0.5
+    boundary = boundary_anchors_from_box(start, end, direction)
+    if boundary:
+        start, start_edge, end, end_edge = boundary
+        source = "box_boundary_intersection"
+    else:
+        start_edge = -1
+        end_edge = -1
+        source = "seam_endpoint_fallback"
     inner_start = clamp_pixel([start[0] + direction[0] * c_inset, start[1] + direction[1] * c_inset])
     inner_end = clamp_pixel([end[0] - direction[0] * d_inset, end[1] - direction[1] * d_inset])
-    left_a = clamp_pixel([inner_start[0] + perp[0] * half, inner_start[1] + perp[1] * half])
-    left_b = clamp_pixel([inner_start[0] - perp[0] * half, inner_start[1] - perp[1] * half])
-    right_a = clamp_pixel([inner_end[0] - perp[0] * half, inner_end[1] - perp[1] * half])
-    right_b = clamp_pixel([inner_end[0] + perp[0] * half, inner_end[1] + perp[1] * half])
+    if boundary:
+        left_a, left_b, left_meta = line_on_box_edge(
+            start,
+            start_edge,
+            side_cut_px,
+            [direction[0] * c_inset, direction[1] * c_inset],
+            "left",
+        )
+        right_a, right_b, right_meta = line_on_box_edge(
+            end,
+            end_edge,
+            side_cut_px,
+            [-direction[0] * d_inset, -direction[1] * d_inset],
+            "right",
+        )
+    else:
+        left_a = clamp_pixel([inner_start[0] + perp[0] * half, inner_start[1] + perp[1] * half])
+        left_b = clamp_pixel([inner_start[0] - perp[0] * half, inner_start[1] - perp[1] * half])
+        right_a = clamp_pixel([inner_end[0] - perp[0] * half, inner_end[1] - perp[1] * half])
+        right_b = clamp_pixel([inner_end[0] + perp[0] * half, inner_end[1] + perp[1] * half])
+        left_meta = {"box_edge_index": None, "line_source": "seam_perpendicular_fallback"}
+        right_meta = {"box_edge_index": None, "line_source": "seam_perpendicular_fallback"}
     return [
         {
             "name": "left_end",
@@ -937,6 +1073,8 @@ def three_cut_line_pixels(side_cut_px: float, c_inset_px: float = 0.0, d_inset_p
             "start_px": left_a,
             "end_px": left_b,
             "c_inset_px": c_inset,
+            "anchor_source": source,
+            **left_meta,
         },
         {
             "name": "center",
@@ -947,6 +1085,7 @@ def three_cut_line_pixels(side_cut_px: float, c_inset_px: float = 0.0, d_inset_p
             "end_px": inner_end,
             "c_inset_px": c_inset,
             "d_inset_px": d_inset,
+            "anchor_source": source,
         },
         {
             "name": "right_end",
@@ -956,6 +1095,8 @@ def three_cut_line_pixels(side_cut_px: float, c_inset_px: float = 0.0, d_inset_p
             "start_px": right_a,
             "end_px": right_b,
             "d_inset_px": d_inset,
+            "anchor_source": source,
+            **right_meta,
         },
     ]
 
