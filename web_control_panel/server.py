@@ -12,7 +12,9 @@ from datetime import datetime
 import json
 import math
 import mimetypes
+import os
 import re
+import select
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import subprocess
@@ -107,6 +109,23 @@ def clear_stream_process(process: Any) -> None:
     with STREAM_STATE_LOCK:
         if STREAM_PROCESS is process:
             STREAM_PROCESS = None
+
+
+def read_stream_chunk(process: Any, timeout_s: float) -> bytes:
+    if process.stdout is None:
+        return b""
+    fd = process.stdout.fileno()
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        if process.poll() is not None:
+            try:
+                return os.read(fd, 65536)
+            except OSError:
+                return b""
+        readable, _, _ = select.select([fd], [], [], min(0.5, max(0.0, deadline - time.time())))
+        if readable:
+            return os.read(fd, 65536)
+    return b""
 
 
 def now_id() -> str:
@@ -2581,6 +2600,25 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"ok": False, "error": "video stream was replaced by a newer request"}, status=409)
             return
 
+        first_chunk = read_stream_chunk(process, timeout_s=32.0)
+        if not first_chunk:
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=2)
+            stderr = ""
+            if process.stderr is not None:
+                stderr = process.stderr.read().decode("utf-8", errors="replace").strip()
+            if stderr:
+                print(f"[web] stream process stderr:\n{stderr[-4000:]}", flush=True)
+            clear_stream_process(process)
+            STREAM_LOCK.release()
+            self.send_json({"ok": False, "error": "camera stream did not produce a frame"}, status=503)
+            return
+
         self.send_response(200)
         self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={STREAM_BOUNDARY}")
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -2588,12 +2626,17 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
         try:
+            try:
+                self.wfile.write(first_chunk)
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                return
             while True:
                 if stream_was_replaced(stream_epoch):
                     break
                 if process.stdout is None:
                     break
-                chunk = process.stdout.read(65536)
+                chunk = read_stream_chunk(process, timeout_s=2.0)
                 if not chunk:
                     break
                 try:
