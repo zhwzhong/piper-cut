@@ -870,38 +870,35 @@ $("moveThreeCutPointBtn").addEventListener("click", () => {
   }, `move ${pointLabel}...`);
 });
 
-$("moveThreeCutAllBtn").addEventListener("click", () => {
+async function runThreeCutAllSequence() {
   const steps = [];
   const motion = motionPayload();
-  runSequenceStep(steps, "move_point_2_pose", "/api/move_named_pose", {
+  if (isStreamEnabled()) {
+    startStream();
+    await sleep(700);
+  }
+  if (!await runSequenceStep(steps, "move_point_2_pose", "/api/move_named_pose", {
     pose_name: "point_2",
     ...motion,
-  }, "move point_2 pose...")
-    .then((ok) => {
-      if (!ok) return false;
-      return runSequenceStep(steps, "move_E_to_A", "/api/move_three_cut_lines", {
-        segment_mm: segmentMm(),
-        use_segments: useSegments(),
-        ...motion,
-      }, "move E-A...");
-    })
-    .then((ok) => {
-      if (!ok) return false;
-      return runSequenceStep(steps, "move_point_1_pose", "/api/move_named_pose", {
-        pose_name: "point_1",
-        ...motion,
-      }, "move point_1 pose...");
-    })
-    .then((ok) => {
-      if (ok) {
-        showLog({ steps });
-        $("statusText").textContent = "A-F done";
-      }
-    })
-    .catch((error) => {
-      $("statusText").textContent = "A-F failed";
-      $("logBox").textContent = String(error);
-    });
+  }, "move point_2 pose...")) return;
+  if (!await runSequenceStep(steps, "move_E_to_A", "/api/move_three_cut_lines", {
+    segment_mm: segmentMm(),
+    use_segments: useSegments(),
+    ...motion,
+  }, "move E-A...")) return;
+  if (!await runSequenceStep(steps, "move_point_1_pose", "/api/move_named_pose", {
+    pose_name: "point_1",
+    ...motion,
+  }, "move point_1 pose...")) return;
+  showLog({ steps });
+  $("statusText").textContent = "A-F done";
+}
+
+$("moveThreeCutAllBtn").addEventListener("click", () => {
+  runThreeCutAllSequence().catch((error) => {
+    $("statusText").textContent = "A-F failed";
+    $("logBox").textContent = String(error);
+  });
 });
 
 $("selectLineBtn").addEventListener("click", () => {
