@@ -23,15 +23,19 @@ body {
 
 .app-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 310px;
-  min-height: 100vh;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .viewport {
   padding: 20px;
-  display: grid;
-  grid-template-rows: auto auto minmax(150px, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 14px;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
 }
 
 .topbar {
@@ -117,7 +121,8 @@ select {
   aspect-ratio: 16 / 9;
   width: 100%;
   min-height: 0;
-  max-height: calc(100vh - 270px);
+  max-height: min(60vh, calc((100vw - 440px) * 9 / 16));
+  flex: 0 0 auto;
 }
 
 .image-stage.calibrating {
@@ -141,13 +146,6 @@ select {
   font-size: 22px;
 }
 
-.output-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 14px;
-  min-height: 0;
-}
-
 pre {
   margin: 0;
   padding: 12px;
@@ -161,12 +159,35 @@ pre {
 }
 
 .control-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  align-items: start;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+
+.output-panel {
   border-left: 1px solid var(--line);
   background: var(--panel);
   padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-rows: minmax(180px, 0.9fr) minmax(240px, 1.4fr);
+  gap: 14px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.output-panel > div {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+}
+
+h2 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0;
 }
 
 button {
@@ -295,14 +316,26 @@ button.active {
 @media (max-width: 920px) {
   .app-shell {
     grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
   }
 
-  .control-panel {
+  .viewport {
+    overflow: visible;
+  }
+
+  .image-stage {
+    max-height: none;
+  }
+
+  .output-panel {
     border-left: 0;
     border-top: 1px solid var(--line);
+    height: auto;
+    overflow: visible;
   }
 
-  .output-grid {
-    grid-template-columns: 1fr;
+  .output-panel pre {
+    max-height: 260px;
   }
 }

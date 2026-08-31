@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PIPER ROI Control</title>
-    <link rel="stylesheet" href="/static/app.css?v=20260831-video-stage-16x9" />
+    <link rel="stylesheet" href="/static/app.css?v=20260831-controls-bottom-output-right" />
   </head>
   <body>
     <main class="app-shell">
@@ -43,13 +43,8 @@
           <div id="emptyImage" class="empty-image">Capture ROI</div>
         </div>
 
-        <div class="output-grid">
-          <pre id="coordsBox">No coordinates yet.</pre>
-          <pre id="logBox">No command output yet.</pre>
-        </div>
-      </section>
 
-      <aside class="control-panel">
+        <section class="control-panel">
         <button id="helpBtn">参数说明</button>
         <button id="runSequenceBtn" class="primary">一键执行</button>
         <button id="captureBtn" class="primary">拍摄 ROI</button>
@@ -159,9 +154,21 @@
             <button data-axis="x" data-dir="1">X+ →</button>
           </div>
         </div>
+        </section>
+      </section>
+
+      <aside class="output-panel">
+        <div>
+          <h2>坐标</h2>
+          <pre id="coordsBox">No coordinates yet.</pre>
+        </div>
+        <div>
+          <h2>输出</h2>
+          <pre id="logBox">No command output yet.</pre>
+        </div>
       </aside>
     </main>
 
-    <script src="/static/app.js?v=20260831-video-stage-16x9"></script>
+    <script src="/static/app.js?v=20260831-controls-bottom-output-right"></script>
   </body>
 </html>
