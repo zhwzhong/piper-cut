@@ -247,12 +247,19 @@ def parse_side_cut_px(value: Any) -> float:
 
 
 def parse_endpoint_inset_px(value: Any) -> float:
-    inset = float(value if value not in (None, "") else 20.0)
+    inset = float(value if value not in (None, "") else 0.0)
     if not math.isfinite(inset):
         raise ValueError("endpoint_inset_px must be finite")
     if inset < 0.0 or inset > 200.0:
         raise ValueError("endpoint_inset_px must be within [0, 200] px")
     return inset
+
+
+def parse_three_cut_insets(body: dict[str, Any]) -> tuple[float, float]:
+    legacy = body.get("endpoint_inset_px")
+    c_value = body.get("c_inset_px", legacy)
+    d_value = body.get("d_inset_px", legacy)
+    return parse_endpoint_inset_px(c_value), parse_endpoint_inset_px(d_value)
 
 
 def command_result(command: list[str], *, timeout: float | None = None) -> dict[str, Any]:
@@ -898,7 +905,7 @@ def clamp_pixel(point: list[float]) -> list[float]:
     ]
 
 
-def three_cut_line_pixels(side_cut_px: float, endpoint_inset_px: float = 20.0) -> list[dict[str, Any]]:
+def three_cut_line_pixels(side_cut_px: float, c_inset_px: float = 0.0, d_inset_px: float = 0.0) -> list[dict[str, Any]]:
     seam_pixels = STATE.get("last_seam_pixels")
     if not isinstance(seam_pixels, dict) or not is_xy(seam_pixels.get("start_px")) or not is_xy(seam_pixels.get("end_px")):
         raise ValueError("run seam detection before building three cut lines")
@@ -909,27 +916,60 @@ def three_cut_line_pixels(side_cut_px: float, endpoint_inset_px: float = 20.0) -
     length = math.hypot(dx, dy)
     if length < 5.0:
         raise ValueError("center seam is too short")
-    inset = min(float(endpoint_inset_px), max(0.0, (length - 5.0) * 0.45))
+    max_inset = max(0.0, (length - 5.0) * 0.45)
+    c_inset = min(float(c_inset_px), max_inset)
+    d_inset = min(float(d_inset_px), max_inset)
     direction = [dx / length, dy / length]
     perp = [-dy / length, dx / length]
     half = float(side_cut_px) * 0.5
-    inner_start = clamp_pixel([start[0] + direction[0] * inset, start[1] + direction[1] * inset])
-    inner_end = clamp_pixel([end[0] - direction[0] * inset, end[1] - direction[1] * inset])
+    inner_start = clamp_pixel([start[0] + direction[0] * c_inset, start[1] + direction[1] * c_inset])
+    inner_end = clamp_pixel([end[0] - direction[0] * d_inset, end[1] - direction[1] * d_inset])
     left_a = clamp_pixel([inner_start[0] + perp[0] * half, inner_start[1] + perp[1] * half])
     left_b = clamp_pixel([inner_start[0] - perp[0] * half, inner_start[1] - perp[1] * half])
     right_a = clamp_pixel([inner_end[0] - perp[0] * half, inner_end[1] - perp[1] * half])
     right_b = clamp_pixel([inner_end[0] + perp[0] * half, inner_end[1] + perp[1] * half])
     return [
-        {"name": "left_end", "label": "左端短线", "start_label": "A", "end_label": "B", "start_px": left_a, "end_px": left_b},
-        {"name": "center", "label": "中间长线", "start_label": "C", "end_label": "D", "start_px": inner_start, "end_px": inner_end},
-        {"name": "right_end", "label": "右端短线", "start_label": "E", "end_label": "F", "start_px": right_a, "end_px": right_b},
+        {
+            "name": "left_end",
+            "label": "左端短线",
+            "start_label": "A",
+            "end_label": "B",
+            "start_px": left_a,
+            "end_px": left_b,
+            "c_inset_px": c_inset,
+        },
+        {
+            "name": "center",
+            "label": "中间长线",
+            "start_label": "C",
+            "end_label": "D",
+            "start_px": inner_start,
+            "end_px": inner_end,
+            "c_inset_px": c_inset,
+            "d_inset_px": d_inset,
+        },
+        {
+            "name": "right_end",
+            "label": "右端短线",
+            "start_label": "E",
+            "end_label": "F",
+            "start_px": right_a,
+            "end_px": right_b,
+            "d_inset_px": d_inset,
+        },
     ]
 
 
-def build_three_cut_lines(roi: list[int], side_cut_px: float, target_z_min_mm: float, endpoint_inset_px: float = 20.0) -> dict[str, Any]:
+def build_three_cut_lines(
+    roi: list[int],
+    side_cut_px: float,
+    target_z_min_mm: float,
+    c_inset_px: float = 0.0,
+    d_inset_px: float = 0.0,
+) -> dict[str, Any]:
     import cv2
 
-    lines = three_cut_line_pixels(side_cut_px, endpoint_inset_px)
+    lines = three_cut_line_pixels(side_cut_px, c_inset_px, d_inset_px)
     target_lines: list[dict[str, Any]] = []
     cut_points: list[dict[str, Any]] = []
     for line in lines:
@@ -942,7 +982,8 @@ def build_three_cut_lines(roi: list[int], side_cut_px: float, target_z_min_mm: f
                 "mode": "three_cut_line",
                 "line_name": line["name"],
                 "side_cut_px": float(side_cut_px),
-                "endpoint_inset_px": float(endpoint_inset_px),
+                "c_inset_px": float(c_inset_px),
+                "d_inset_px": float(d_inset_px),
             },
         )
         if not result.get("ok"):
@@ -1020,7 +1061,8 @@ def build_three_cut_lines(roi: list[int], side_cut_px: float, target_z_min_mm: f
         "roi": roi,
         "target_z_min_mm": float(target_z_min_mm),
         "side_cut_px": float(side_cut_px),
-        "endpoint_inset_px": float(endpoint_inset_px),
+        "c_inset_px": float(c_inset_px),
+        "d_inset_px": float(d_inset_px),
         "overlay_url": STATE["last_image_url"],
         "seam_pixels": seam_pixels,
         "box_pixels": STATE.get("last_box_pixels"),
@@ -2461,11 +2503,13 @@ class Handler(BaseHTTPRequestHandler):
                     parse_target_z_min_mm(body.get("target_z_min_mm")),
                 )
             elif parsed.path == "/api/build_three_cut_lines":
+                c_inset_px, d_inset_px = parse_three_cut_insets(body)
                 response = build_three_cut_lines(
                     parse_roi(body.get("roi")),
                     parse_side_cut_px(body.get("side_cut_px")),
                     parse_target_z_min_mm(body.get("target_z_min_mm")),
-                    parse_endpoint_inset_px(body.get("endpoint_inset_px")),
+                    c_inset_px,
+                    d_inset_px,
                 )
             elif parsed.path == "/api/calibration_target_from_pixel":
                 response = calibration_target_from_pixel(

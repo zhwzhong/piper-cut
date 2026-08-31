@@ -35,12 +35,13 @@ X, Y, W, H:
   勾选“启用分段”后，从起点到终点时的最大插值段长，默认 30 mm。
   系统会把起点到终点拆成多段，每段成功后才继续下一段。
 
-三线切割 / 端部线 px / 端点内缩 px:
+三线切割 / 端部线 px / C 点内缩 px / D 点内缩 px:
   勾选“三线切割”后，检测中线会额外生成左端短线、中间长线、右端短线。
   左边线段端点为 A/B，中间为 C/D，右边为 E/F。
   端部线 px 是左右短线的像素长度，默认 90 px，用于把胶带两端也切开。
-  端点内缩 px 会把中线两端向箱子内部收一点，默认 20 px。
-  如果 D/E/F 的 X 偏大、右侧越过箱子边缘，就调大这个值；如果切得不够到边，就调小。
+  C 点内缩 px 只控制左侧中线点 C 以及跟随它的 A/B，默认 0 px。
+  D 点内缩 px 只控制右侧中线点 D 以及跟随它的 E/F，默认 0 px。
+  如果 E/F/D 越过箱子边缘，就只调大 D 点内缩；如果 A/B/C 越过另一端，就只调大 C 点内缩。
   生成三线后，可通过“三线点位”下拉框选择 A-F 任一点并移动过去。
   “一键 A-F”会先移动到 point_2 的保存位姿，再按 E->F -> F->D -> D->C -> C->B -> B->A 连续执行，最后回到 point_1 的保存位姿，并使用当前分段设置。
 
@@ -185,12 +186,19 @@ function sideCutPx() {
   return value;
 }
 
-function endpointInsetPx() {
-  const value = Number($("endpointInsetPx").value || 20);
+function insetPx(inputId, label) {
+  const value = Number($(inputId).value || 0);
   if (!Number.isFinite(value) || value < 0) {
-    throw new Error("端点内缩必须是非负数，单位 px");
+    throw new Error(`${label}必须是非负数，单位 px`);
   }
   return value;
+}
+
+function threeCutInsetPayload() {
+  return {
+    c_inset_px: insetPx("cInsetPx", "C 点内缩"),
+    d_inset_px: insetPx("dInsetPx", "D 点内缩"),
+  };
 }
 
 function motionPayload() {
@@ -688,7 +696,7 @@ async function runOneClickSequence() {
       roi: roi(),
       target_z_min_mm: targetZMinMm(),
       side_cut_px: sideCutPx(),
-      endpoint_inset_px: endpointInsetPx(),
+      ...threeCutInsetPayload(),
     }, "building three lines...")) return;
   }
 
@@ -745,7 +753,7 @@ async function buildThreeCutLinesWithAutoDetect() {
     roi: roi(),
     target_z_min_mm: targetZMinMm(),
     side_cut_px: sideCutPx(),
-    endpoint_inset_px: endpointInsetPx(),
+    ...threeCutInsetPayload(),
   };
   let data = await post("/api/build_three_cut_lines", payload, "building three lines...");
   if (data.ok) {
