@@ -2,6 +2,7 @@ const state = {
   busy: false,
   lastTarget: null,
   lastPose: null,
+  lastImageUrl: null,
   streamTimer: null,
   manualMode: null,
   pendingLineStartPx: null,
@@ -269,6 +270,7 @@ function setBusy(value, text = "ready") {
 
 function showImage(url) {
   const image = $("cameraImage");
+  state.lastImageUrl = url;
   image.src = `${url}?t=${Date.now()}`;
   image.style.display = "block";
   $("emptyImage").style.display = "none";
@@ -347,6 +349,7 @@ function retryStreamSoon() {
   if (!isStreamEnabled() || state.busy || state.stoppingStream) return;
   if (state.streamRetryCount >= 8) {
     $("statusText").textContent = "stream retry failed";
+    if (state.lastImageUrl) showImage(state.lastImageUrl);
     return;
   }
   state.streamRetryCount += 1;
@@ -609,8 +612,8 @@ async function post(path, payload, label) {
       body: JSON.stringify(payload || {}),
     });
     const data = await response.json();
-    if (!shouldRestartStream && data.image_url) showImage(data.image_url);
-    if (!shouldRestartStream && data.overlay_url) showImage(data.overlay_url);
+    if (data.image_url) showImage(data.image_url);
+    if (data.overlay_url) showImage(data.overlay_url);
     if (data.saved_poses) updateSavedPoseSelect(data.saved_poses);
     showCoords(data);
     showLog(data);

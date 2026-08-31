@@ -111,6 +111,17 @@ def clear_stream_process(process: Any) -> None:
             STREAM_PROCESS = None
 
 
+def stop_stream_for_camera(timeout_s: float = 12.0) -> None:
+    claim_stream_request()
+    acquired = STREAM_LOCK.acquire(timeout=timeout_s)
+    if not acquired:
+        raise TimeoutError("video stream did not release camera in time")
+    try:
+        time.sleep(1.0)
+    finally:
+        STREAM_LOCK.release()
+
+
 def read_stream_chunk(process: Any, timeout_s: float) -> bytes:
     if process.stdout is None:
         return b""
@@ -429,6 +440,7 @@ def annotate_roi(color_path: Path, roi: list[int], include_detection_overlay: bo
 def capture_snapshot(roi: list[int], include_detection_overlay: bool = True) -> dict[str, Any]:
     ensure_dirs()
     before = {path.resolve() for path in CAPTURES.glob("snapshot_*")}
+    stop_stream_for_camera()
     with CAMERA_LOCK:
         result = camera_command_result(
             [
@@ -511,6 +523,8 @@ def detect_seam(
         raise ValueError("mask_mode must be rgbd/cardboard/depth")
     ensure_dirs()
     before = {path.resolve() for path in OUTPUTS.glob("seam_run_*")}
+    if not use_last_snapshot:
+        stop_stream_for_camera()
     command = [
         sys.executable,
         str(ROOT / "01_detect_seam_start_to_base.py"),
