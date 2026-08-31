@@ -2356,6 +2356,42 @@ def file_url(path: Path) -> str:
     return "/files/" + path.resolve().relative_to(ROOT).as_posix()
 
 
+def file_url_path(value: Any) -> Path | None:
+    if not isinstance(value, str) or not value.startswith("/files/"):
+        return None
+    rel = unquote(value[len("/files/") :].split("?", 1)[0])
+    try:
+        return path_under(ROOT, rel)
+    except ValueError:
+        return None
+
+
+def latest_web_artifact_image() -> Path | None:
+    if not ARTIFACTS.is_dir():
+        return None
+    candidates = [
+        path
+        for pattern in ("*.jpg", "*.jpeg", "*.png")
+        for path in ARTIFACTS.glob(pattern)
+        if path.is_file()
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda path: path.stat().st_mtime)
+
+
+def recover_last_image_url() -> str | None:
+    image_path = file_url_path(STATE.get("last_image_url"))
+    if image_path is not None and image_path.is_file():
+        return str(STATE["last_image_url"])
+    image_path = latest_web_artifact_image()
+    if image_path is None:
+        return None
+    image_url = file_url(image_path)
+    STATE["last_image_url"] = image_url
+    return image_url
+
+
 def path_under(root: Path, rel: str) -> Path:
     candidate = (root / rel).resolve()
     root_resolved = root.resolve()
@@ -2589,6 +2625,24 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
+    def send_last_image_or_json(self, error: str, status: int = 503) -> None:
+        image_path = file_url_path(recover_last_image_url())
+        if image_path is not None and image_path.is_file():
+            data = image_path.read_bytes()
+            content_type = mimetypes.guess_type(image_path.name)[0] or "image/jpeg"
+            self.send_response(200)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+            self.send_header("X-Piper-Stream-Fallback", error)
+            self.end_headers()
+            try:
+                self.wfile.write(data)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            return
+        self.send_json({"ok": False, "error": error}, status=status)
+
     def send_stream(self, parsed: Any) -> None:
         query = parse_qs(parsed.query)
         roi = parse_roi(query.get("roi", [",".join(map(str, STATE["roi"]))])[0])
@@ -2602,17 +2656,14 @@ class Handler(BaseHTTPRequestHandler):
 
         stream_epoch, replaced_stream = claim_stream_request()
         if not STREAM_LOCK.acquire(timeout=8.0):
-            self.send_json(
-                {"ok": False, "error": "video stream is busy; previous stream did not stop in time"},
-                status=503,
-            )
+            self.send_last_image_or_json("video stream is busy; previous stream did not stop in time", status=503)
             return
         if replaced_stream:
             time.sleep(1.5)
         camera_lock_acquired = CAMERA_LOCK.acquire(timeout=0.2)
         if not camera_lock_acquired:
             STREAM_LOCK.release()
-            self.send_json({"ok": False, "error": "camera is busy with snapshot or detection"}, status=503)
+            self.send_last_image_or_json("camera is busy with snapshot or detection", status=503)
             return
 
         command = [
@@ -2655,7 +2706,7 @@ class Handler(BaseHTTPRequestHandler):
             stop_process(process)
             CAMERA_LOCK.release()
             STREAM_LOCK.release()
-            self.send_json({"ok": False, "error": "video stream was replaced by a newer request"}, status=409)
+            self.send_last_image_or_json("video stream was replaced by a newer request", status=409)
             return
 
         first_chunk = read_stream_chunk(process, timeout_s=32.0)
@@ -2669,7 +2720,7 @@ class Handler(BaseHTTPRequestHandler):
             clear_stream_process(process)
             CAMERA_LOCK.release()
             STREAM_LOCK.release()
-            self.send_json({"ok": False, "error": "camera stream did not produce a frame"}, status=503)
+            self.send_last_image_or_json("camera stream did not produce a frame", status=503)
             return
 
         self.send_response(200)
@@ -2718,6 +2769,7 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8080)
     args = parser.parse_args()
     ensure_dirs()
+    recover_last_image_url()
     httpd = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f"Serving web control panel at http://{args.host}:{args.port}", flush=True)
     httpd.serve_forever()

@@ -281,6 +281,7 @@ function setBusy(value, text = "ready") {
 function showImage(url) {
   const image = $("cameraImage");
   state.lastImageUrl = url;
+  image.dataset.stream = "0";
   image.src = `${url}?t=${Date.now()}`;
   image.style.display = "block";
   $("emptyImage").style.display = "none";
@@ -1207,7 +1208,11 @@ fetch("/api/status")
       $("targetZMin").value = Number(data.state.target_z_min_mm).toFixed(3);
     }
     updateSavedPoseSelect(data.state?.saved_poses || []);
+    if (data.state?.last_image_url) {
+      state.lastImageUrl = data.state.last_image_url;
+    }
     if (isStreamEnabled()) {
+      if (state.lastImageUrl) showImage(state.lastImageUrl);
       startStream();
     } else if (data.state?.last_image_url) {
       showImage(data.state.last_image_url);
