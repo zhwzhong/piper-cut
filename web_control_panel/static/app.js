@@ -220,6 +220,31 @@ function fillLineInputsFromPixels(seamPixels) {
   $("lineEndY").value = Number(end[1]).toFixed(3);
 }
 
+function fillBaseLineInputs(target) {
+  const block = target?.probe_tip_contact_targets_base || {};
+  const toMm = (mmValues, mValues) => {
+    if (Array.isArray(mmValues) && mmValues.length === 3) {
+      return mmValues.map(Number);
+    }
+    if (Array.isArray(mValues) && mValues.length === 3) {
+      return mValues.map((value) => Number(value) * 1000);
+    }
+    return null;
+  };
+  const start = toMm(block.start_mm, block.start_m);
+  const end = toMm(block.end_mm, block.end_m);
+  if (start) {
+    $("baseStartX").value = start[0].toFixed(3);
+    $("baseStartY").value = start[1].toFixed(3);
+    $("baseStartZ").value = start[2].toFixed(3);
+  }
+  if (end) {
+    $("baseEndX").value = end[0].toFixed(3);
+    $("baseEndY").value = end[1].toFixed(3);
+    $("baseEndZ").value = end[2].toFixed(3);
+  }
+}
+
 function linePixelsPayload() {
   const start = [Number($("lineStartX").value), Number($("lineStartY").value)];
   const end = [Number($("lineEndX").value), Number($("lineEndY").value)];
@@ -354,10 +379,16 @@ function showCoords(data) {
   if (data.target) {
     state.lastTarget = data.target;
     const block = data.target.probe_tip_contact_targets_base || {};
+    const startMm = block.start_mm || block.start_m?.map((value) => Number(value) * 1000);
+    const endMm = block.end_mm || block.end_m?.map((value) => Number(value) * 1000);
     if (data.target_z_min_mm !== undefined) {
       $("targetZMin").value = Number(data.target_z_min_mm).toFixed(3);
     }
     $("coordsBox").textContent = JSON.stringify({
+      frame: block.frame_id || "base_link",
+      position_unit: "mm",
+      start_mm: startMm,
+      end_mm: endMm,
       start_m: block.start_m,
       end_m: block.end_m,
       target_z_min: data.target.target_z_min,
@@ -371,6 +402,7 @@ function showCoords(data) {
     }, null, 2);
     if (data.cut_points) updateCutPointSelect(data.cut_points);
     fillLineInputsFromPixels(data.seam_pixels);
+    fillBaseLineInputs(data.target);
     return;
   }
   if (data.validation_error) {
@@ -559,7 +591,7 @@ async function post(path, payload, label) {
   const shouldRestartStream = isStreamEnabled() && postUsesCamera(path);
   if (shouldRestartStream) {
     stopStream();
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, 4500));
   }
   setBusy(true, label);
   try {
@@ -583,7 +615,7 @@ async function post(path, payload, label) {
   } finally {
     setBusy(false, $("statusText").textContent);
     if (shouldRestartStream) {
-      restartStreamSoon(1200);
+      restartStreamSoon(2500);
     }
   }
 }

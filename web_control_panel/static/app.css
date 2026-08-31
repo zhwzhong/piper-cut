@@ -30,7 +30,7 @@ body {
 .viewport {
   padding: 20px;
   display: grid;
-  grid-template-rows: auto minmax(360px, 1fr) 190px;
+  grid-template-rows: auto auto minmax(150px, 1fr);
   gap: 14px;
 }
 
@@ -114,7 +114,10 @@ select {
   border-radius: 8px;
   display: grid;
   place-items: center;
-  min-height: 360px;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  min-height: 0;
+  max-height: calc(100vh - 270px);
 }
 
 .image-stage.calibrating {

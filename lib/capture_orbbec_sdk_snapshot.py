@@ -39,6 +39,8 @@ def main() -> int:
         type=Path,
         default=Path.home() / "piper_eye_to_hand" / "captures_sdk",
     )
+    parser.add_argument("--warmup-frames", type=int, default=15)
+    parser.add_argument("--frame-timeout-ms", type=int, default=1500)
     args = parser.parse_args()
     with args.config.open("r", encoding="utf-8") as stream:
         config = yaml.safe_load(stream)
@@ -48,8 +50,9 @@ def main() -> int:
         color_width=int(config.get("color_width", 1280)),
         color_height=int(config.get("color_height", 720)),
         fps=int(config.get("camera_fps", 30)),
+        warmup_frames=max(0, int(args.warmup_frames)),
     ) as camera:
-        frame = camera.wait_for_rgbd()
+        frame = camera.wait_for_rgbd(timeout_ms=max(1, int(args.frame_timeout_ms)))
         device = {
             "name": camera.device_name,
             "serial_number": camera.serial_number,

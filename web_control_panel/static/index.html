@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PIPER ROI Control</title>
-    <link rel="stylesheet" href="/static/app.css" />
+    <link rel="stylesheet" href="/static/app.css?v=20260831-video-stage-16x9" />
   </head>
   <body>
     <main class="app-shell">
@@ -55,12 +55,13 @@
         <button id="captureBtn" class="primary">拍摄 ROI</button>
         <button id="detectBtn">检测中线</button>
         <div class="pose-panel">
-          <label>线段起点 px</label>
+          <p class="lock-note">下面是图像像素 (u,v)，仅用于校准中线，不是机械臂 TCP 坐标。</p>
+          <label>图像起点 (u, v) px</label>
           <div class="line-grid">
             <input id="lineStartX" type="number" step="0.1" placeholder="start x" />
             <input id="lineStartY" type="number" step="0.1" placeholder="start y" />
           </div>
-          <label>线段终点 px</label>
+          <label>图像终点 (u, v) px</label>
           <div class="line-grid">
             <input id="lineEndX" type="number" step="0.1" placeholder="end x" />
             <input id="lineEndY" type="number" step="0.1" placeholder="end y" />
@@ -68,6 +69,21 @@
           <div class="segmented">
             <button id="selectLineBtn">校准线段</button>
             <button id="applyLineBtn">确认校准</button>
+          </div>
+        </div>
+        <div class="pose-panel">
+          <p class="lock-note">机械臂 base_link 下的探针尖端目标（只读，单位 mm）</p>
+          <label>中线起点 TCP</label>
+          <div class="xyz-grid">
+            <label>X mm <input id="baseStartX" type="number" readonly /></label>
+            <label>Y mm <input id="baseStartY" type="number" readonly /></label>
+            <label>Z mm <input id="baseStartZ" type="number" readonly /></label>
+          </div>
+          <label>中线终点 TCP</label>
+          <div class="xyz-grid">
+            <label>X mm <input id="baseEndX" type="number" readonly /></label>
+            <label>Y mm <input id="baseEndY" type="number" readonly /></label>
+            <label>Z mm <input id="baseEndZ" type="number" readonly /></label>
           </div>
         </div>
         <button id="poseBtn">获取 TCP 坐标</button>
@@ -146,6 +162,6 @@
       </aside>
     </main>
 
-    <script src="/static/app.js?v=20260824-point-pose-steps"></script>
+    <script src="/static/app.js?v=20260831-video-stage-16x9"></script>
   </body>
 </html>

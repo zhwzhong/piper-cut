@@ -29,6 +29,7 @@ STATIC = Path(__file__).resolve().parent / "static"
 OUTPUTS = ROOT / "outputs"
 WEB_OUTPUTS = OUTPUTS / "web_panel"
 CAPTURES = WEB_OUTPUTS / "captures"
+STREAM_CAPTURES = WEB_OUTPUTS / "stream_captures"
 ARTIFACTS = WEB_OUTPUTS / "artifacts"
 VALIDATION_DIR = WEB_OUTPUTS / "calibration_validation"
 if str(LIB) not in sys.path:
@@ -40,6 +41,7 @@ CONFIRM_EXECUTE = "EXECUTE"
 CONFIRM_RESTORE = "RESTORE_CONTROL_MODE"
 STREAM_BOUNDARY = "piper_frame"
 CAMERA_LOCK = threading.Lock()
+STREAM_LOCK = threading.Lock()
 JOG_LOCK = threading.Lock()
 JOG_CONTROL: dict[str, Any] = {
     "stop": None,
@@ -84,6 +86,7 @@ def safe_artifact_suffix(value: Any) -> str:
 
 def ensure_dirs() -> None:
     CAPTURES.mkdir(parents=True, exist_ok=True)
+    STREAM_CAPTURES.mkdir(parents=True, exist_ok=True)
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
     VALIDATION_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -174,6 +177,45 @@ def command_result(command: list[str], *, timeout: float | None = None) -> dict[
         "duration_s": round(time.time() - started, 3),
         "output": output,
     }
+
+
+def transient_camera_error(output: str) -> bool:
+    markers = (
+        "uvc_open failed",
+        "openUsbDevice failed",
+        "was not found",
+        "timed out waiting for Orbbec RGB-D frames",
+    )
+    return any(marker in output for marker in markers)
+
+
+def camera_command_result(
+    command: list[str],
+    *,
+    timeout: float | None = None,
+    attempts: int = 3,
+    retry_delay_s: float = 5.0,
+) -> dict[str, Any]:
+    history = []
+    for attempt in range(1, max(1, attempts) + 1):
+        result = command_result(command, timeout=timeout)
+        result["attempt"] = attempt
+        history.append(
+            {
+                "attempt": attempt,
+                "returncode": result["returncode"],
+                "duration_s": result["duration_s"],
+                "output_tail": result["output"][-2000:],
+            }
+        )
+        if result["returncode"] == 0:
+            result["attempts"] = history
+            return result
+        if attempt >= attempts or not transient_camera_error(result["output"]):
+            result["attempts"] = history
+            return result
+        time.sleep(retry_delay_s)
+    return result
 
 
 def newest_dir(root: Path, prefix: str, before: set[Path] | None = None) -> Path:
@@ -335,7 +377,7 @@ def capture_snapshot(roi: list[int], include_detection_overlay: bool = True) -> 
     ensure_dirs()
     before = {path.resolve() for path in CAPTURES.glob("snapshot_*")}
     with CAMERA_LOCK:
-        result = command_result(
+        result = camera_command_result(
             [
                 sys.executable,
                 str(ROOT / "lib" / "capture_orbbec_sdk_snapshot.py"),
@@ -345,6 +387,8 @@ def capture_snapshot(roi: list[int], include_detection_overlay: bool = True) -> 
                 str(CAPTURES),
             ],
             timeout=30,
+            attempts=3,
+            retry_delay_s=5.0,
         )
     if result["returncode"] != 0:
         return {"ok": False, "result": result}
@@ -361,6 +405,47 @@ def capture_snapshot(roi: list[int], include_detection_overlay: bool = True) -> 
         "image_url": image_url,
         "result": result,
     }
+
+
+def capture_stream_frame_bgr(roi: list[int], show_roi: bool, show_box: bool, show_seam: bool) -> Any:
+    import cv2
+
+    before = {path.resolve() for path in STREAM_CAPTURES.glob("snapshot_*")}
+    if not CAMERA_LOCK.acquire(timeout=0.2):
+        raise RuntimeError("camera is busy")
+    try:
+        result = command_result(
+            [
+                sys.executable,
+                str(ROOT / "lib" / "capture_orbbec_sdk_snapshot.py"),
+                "--config",
+                str(ROOT / "config" / "runtime_config.yaml"),
+                "--output-root",
+                str(STREAM_CAPTURES),
+                "--warmup-frames",
+                "5",
+                "--frame-timeout-ms",
+                "5000",
+            ],
+            timeout=35,
+        )
+    finally:
+        CAMERA_LOCK.release()
+    if result["returncode"] != 0:
+        raise RuntimeError(result["output"] or f"stream capture failed with returncode {result['returncode']}")
+    snapshot = newest_dir(STREAM_CAPTURES, "snapshot_", before)
+    image = cv2.imread(str(snapshot / "color.png"))
+    if image is None:
+        raise RuntimeError(f"failed to read stream color image: {snapshot / 'color.png'}")
+    if show_roi:
+        draw_roi_overlay(image, roi)
+    if show_box:
+        draw_box_overlay(image, STATE.get("last_box_pixels"))
+    if show_seam:
+        draw_seam_overlay(image, STATE.get("last_seam_pixels"))
+    STATE["last_snapshot"] = str(snapshot)
+    STATE["last_image_url"] = file_url(snapshot / "color.png")
+    return image
 
 
 def detect_seam(
@@ -386,7 +471,7 @@ def detect_seam(
     if use_last_snapshot and STATE.get("last_snapshot"):
         command.extend(["--snapshot-dir", str(STATE["last_snapshot"])])
     with CAMERA_LOCK:
-        result = command_result(command, timeout=90)
+        result = camera_command_result(command, timeout=90, attempts=2, retry_delay_s=5.0)
     if result["returncode"] != 0:
         return {"ok": False, "result": result}
     detection_dir = newest_dir(OUTPUTS, "seam_run_", before)
@@ -2393,8 +2478,6 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def send_stream(self, parsed: Any) -> None:
-        from orbbec_sdk_camera import OrbbecSDKCamera
-
         query = parse_qs(parsed.query)
         roi = parse_roi(query.get("roi", [",".join(map(str, STATE["roi"]))])[0])
         show_roi = bool_query(query, "show_roi", True)
@@ -2406,14 +2489,46 @@ class Handler(BaseHTTPRequestHandler):
         target_fps = min(15.0, max(1.0, target_fps))
         frame_delay = 1.0 / target_fps
 
-        if not CAMERA_LOCK.acquire(timeout=5.0):
-            self.send_json({"ok": False, "error": "camera is already in use by another request"}, status=503)
+        if not STREAM_LOCK.acquire(timeout=0.2):
+            self.send_json({"ok": False, "error": "another video stream is already active"}, status=503)
             return
-        try:
-            camera = OrbbecSDKCamera(**runtime_camera_kwargs())
-        except Exception:
-            CAMERA_LOCK.release()
-            raise
+
+        command = [
+            sys.executable,
+            str(ROOT / "lib" / "stream_orbbec_sdk_mjpeg.py"),
+            "--config",
+            str(ROOT / "config" / "runtime_config.yaml"),
+            "--roi",
+            ",".join(map(str, roi)),
+            "--quality",
+            str(quality),
+            "--fps",
+            str(target_fps),
+            "--warmup-frames",
+            "5",
+            "--frame-timeout-ms",
+            "1500",
+            "--overlay-json",
+            json.dumps(
+                {
+                    "box_pixels": STATE.get("last_box_pixels"),
+                    "seam_pixels": STATE.get("last_seam_pixels"),
+                },
+                ensure_ascii=False,
+            ),
+        ]
+        if show_roi:
+            command.append("--show-roi")
+        if show_box:
+            command.append("--show-box")
+        if show_seam:
+            command.append("--show-seam")
+        process = subprocess.Popen(
+            command,
+            cwd=ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
 
         self.send_response(200)
         self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={STREAM_BOUNDARY}")
@@ -2422,42 +2537,31 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
         try:
-            with camera:
-                missed_frames = 0
-                while True:
-                    started = time.time()
-                    try:
-                        frame = camera.wait_for_rgbd(timeout_ms=1500)
-                    except RuntimeError as error:
-                        missed_frames += 1
-                        print(f"[web] stream frame miss {missed_frames}: {error}", flush=True)
-                        if missed_frames >= 5:
-                            break
-                        time.sleep(0.1)
-                        continue
-                    missed_frames = 0
-                    image = frame.color_bgr.copy()
-                    if show_roi:
-                        draw_roi_overlay(image, roi)
-                    if show_box:
-                        draw_box_overlay(image, STATE.get("last_box_pixels"))
-                    if show_seam:
-                        draw_seam_overlay(image, STATE.get("last_seam_pixels"))
-                    payload = encode_jpeg_bytes(image, quality=quality)
-                    try:
-                        self.wfile.write(f"--{STREAM_BOUNDARY}\r\n".encode("ascii"))
-                        self.wfile.write(b"Content-Type: image/jpeg\r\n")
-                        self.wfile.write(f"Content-Length: {len(payload)}\r\n\r\n".encode("ascii"))
-                        self.wfile.write(payload)
-                        self.wfile.write(b"\r\n")
-                        self.wfile.flush()
-                    except (BrokenPipeError, ConnectionResetError):
-                        break
-                    sleep_s = frame_delay - (time.time() - started)
-                    if sleep_s > 0:
-                        time.sleep(sleep_s)
+            while True:
+                if process.stdout is None:
+                    break
+                chunk = process.stdout.read(65536)
+                if not chunk:
+                    break
+                try:
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+                except (BrokenPipeError, ConnectionResetError):
+                    break
         finally:
-            CAMERA_LOCK.release()
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait(timeout=2)
+            stderr = ""
+            if process.stderr is not None:
+                stderr = process.stderr.read().decode("utf-8", errors="replace").strip()
+            if stderr:
+                print(f"[web] stream process stderr:\n{stderr[-4000:]}", flush=True)
+            STREAM_LOCK.release()
 
     def log_message(self, fmt: str, *args: Any) -> None:
         print(f"[web] {self.address_string()} {fmt % args}", flush=True)
