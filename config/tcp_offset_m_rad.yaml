@@ -1,8 +1,48 @@
-tool: piper_tcp_calibrate_sdk.py
-created_at: '2026-08-22T18:12:19+08:00'
+tool: export_tcp_subset_sdk.py
+created_at: '2026-08-31T16:05:55+08:00'
+source_calibration: /home/radxa/piper_tcp_calibration/results/piper_tcp_sdk_20260831_new_probe.yaml
 input:
   backend: piper_sdk
   can_name: can0
+  source_sample_count: 20
+  selected_sample_count: 12
+  selected_sample_indices_1based: &id001
+  - 2
+  - 4
+  - 6
+  - 7
+  - 8
+  - 10
+  - 13
+  - 14
+  - 15
+  - 17
+  - 18
+  - 20
+  robust_pool_indices_1based:
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+  - 15
+  - 16
+  - 17
+  - 18
+  - 19
+  - 20
+  selection_method: least-trimmed robust consensus followed by exhaustive balanced
+    subset scoring (fit, held-out prediction, pose diversity, condition, leave-one-out
+    stability)
   pose_source: raw J6 end-pose feedback; no ROS/driver TCP offset
   software_tcp_offset_during_collection_m_rad:
   - 0.0
@@ -11,532 +51,412 @@ input:
   - 0.0
   - 0.0
   - 0.0
-  sample_count: 32
 result:
   status: calibrated_and_validated
   tcp_offset_m_rad:
-  - -0.0003274183293704914
-  - 0.0011431397434742835
-  - 0.07693659633207012
+  - 0.0014776104376773445
+  - 0.0009592381545213136
+  - 0.08428718645795262
   - 0.0
   - 0.0
   - 0.0
   tcp_translation_flange_m:
-  - -0.0003274183293704914
-  - 0.0011431397434742835
-  - 0.07693659633207012
+  - 0.0014776104376773445
+  - 0.0009592381545213136
+  - 0.08428718645795262
   tcp_rotation_xyz_rad:
   - 0.0
   - 0.0
   - 0.0
   fixed_pivot_base_m:
-  - 0.353034491959304
-  - 0.008472464237657488
-  - 0.0017965156163123424
+  - 0.3867115813375379
+  - -0.00529240376978041
+  - 0.0016541046654600597
 quality:
-  residual_rms_mm: 1.214414948174022
-  residual_median_mm: 1.05470173982007
-  residual_max_mm: 2.286938151562163
+  sample_count: 12
+  residual_rms_mm: 0.7312469786283081
+  residual_median_mm: 0.7528357678237874
+  residual_max_mm: 0.9131724268723772
   rank: 6
-  condition_number: 7.489986673975344
-  max_pairwise_rotation_deg: 117.75595602612728
-  leave_one_out_tcp_spread_rms_mm: 0.09913918828068437
+  condition_number: 7.376021600072021
+  max_pairwise_rotation_deg: 76.15209005890843
+  leave_one_out_tcp_spread_rms_mm: 0.21307348905900636
+  prediction_on_robust_pool:
+    sample_count: 20
+    residual_rms_mm: 1.1276995099457034
+    residual_median_mm: 0.7966430710903792
+    residual_max_mm: 2.0800526986425236
+  prediction_on_held_out_robust_pool:
+    sample_count: 8
+    residual_rms_mm: 1.5418113523385102
+    residual_median_mm: 1.5353054837282891
+    residual_max_mm: 2.0800526986425236
+  prediction_on_all_source_samples:
+    sample_count: 20
+    residual_rms_mm: 1.1276995099457034
+    residual_median_mm: 0.7966430710903792
+    residual_max_mm: 2.0800526986425236
+  prediction_on_all_held_out_samples:
+    sample_count: 8
+    residual_rms_mm: 1.5418113523385102
+    residual_median_mm: 1.5353054837282891
+    residual_max_mm: 2.0800526986425236
+  prediction_on_samples_rejected_from_robust_pool:
+    sample_count: 0
+    residual_rms_mm: null
+    residual_median_mm: null
+    residual_max_mm: null
+reference_solutions:
+  all_source_samples:
+    tcp_translation_flange_m:
+    - 0.0014186543809344744
+    - 0.0010610326964746175
+    - 0.08453019798533509
+    fixed_pivot_base_m:
+    - 0.38668160270132845
+    - -0.0049493572368873705
+    - 0.0012762488864028576
+    rank: 6
+    condition_number: 7.146830670764924
+    tcp_delta_from_selected_mm: 0.2699861993489919
+  robust_pool:
+    sample_indices_1based:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    - 17
+    - 18
+    - 19
+    - 20
+    tcp_translation_flange_m:
+    - 0.0014186543809344744
+    - 0.0010610326964746175
+    - 0.08453019798533509
+    fixed_pivot_base_m:
+    - 0.38668160270132845
+    - -0.0049493572368873705
+    - 0.0012762488864028576
+    rank: 6
+    condition_number: 7.146830670764924
+    tcp_delta_from_selected_mm: 0.2699861993489919
+per_source_sample_prediction_residual_mm:
+- source_sample_index_1based: 1
+  selected_for_fit: false
+  residual_mm: 0.9545242634340247
+- source_sample_index_1based: 2
+  selected_for_fit: true
+  residual_mm: 0.786428832348621
+- source_sample_index_1based: 3
+  selected_for_fit: false
+  residual_mm: 0.7503818511337739
+- source_sample_index_1based: 4
+  selected_for_fit: true
+  residual_mm: 0.6925564523766706
+- source_sample_index_1based: 5
+  selected_for_fit: false
+  residual_mm: 0.930947538710105
+- source_sample_index_1based: 6
+  selected_for_fit: true
+  residual_mm: 0.7895598917971922
+- source_sample_index_1based: 7
+  selected_for_fit: true
+  residual_mm: 0.49903027573565295
+- source_sample_index_1based: 8
+  selected_for_fit: true
+  residual_mm: 0.8037262503835663
+- source_sample_index_1based: 9
+  selected_for_fit: false
+  residual_mm: 2.0800526986425236
+- source_sample_index_1based: 10
+  selected_for_fit: true
+  residual_mm: 0.662888124275648
+- source_sample_index_1based: 11
+  selected_for_fit: false
+  residual_mm: 1.7375896960094521
+- source_sample_index_1based: 12
+  selected_for_fit: false
+  residual_mm: 2.0668696106038285
+- source_sample_index_1based: 13
+  selected_for_fit: true
+  residual_mm: 0.5504130783783581
+- source_sample_index_1based: 14
+  selected_for_fit: true
+  residual_mm: 0.8455605414024698
+- source_sample_index_1based: 15
+  selected_for_fit: true
+  residual_mm: 0.9131724268723772
+- source_sample_index_1based: 16
+  selected_for_fit: false
+  residual_mm: 1.333021271447126
+- source_sample_index_1based: 17
+  selected_for_fit: true
+  residual_mm: 0.7715560322419235
+- source_sample_index_1based: 18
+  selected_for_fit: true
+  residual_mm: 0.6121217499856284
+- source_sample_index_1based: 19
+  selected_for_fit: false
+  residual_mm: 1.8115938506180755
+- source_sample_index_1based: 20
+  selected_for_fit: true
+  residual_mm: 0.7341155034056511
+samples:
+- captured_at: '2026-08-31T15:48:36+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.4027649999999997
+  - -0.03571300000000005
+  - 0.07882599999999998
+  flange_quaternion_xyzw:
+  - 0.12180892902203365
+  - -0.9717007308933596
+  - -0.19041207498815227
+  - 0.06858218493546406
+  averaged_feedback_count: 57
+  window_position_rms_mm: 2.8211532207911453e-13
+  window_rotation_rms_deg: 1.2074182697257333e-06
+  pivot_contact_residual_mm: 0.786428832348621
+  source_all_sample_fit_residual_mm: 0.8975640291359464
+  source_sample_index_1based: 2
+- captured_at: '2026-08-31T15:49:10+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3604149999999998
+  - -0.02439600000000001
+  - 0.07878199999999999
+  flange_quaternion_xyzw:
+  - 0.07843600094938673
+  - 0.9763967806925616
+  - 0.1213378323753453
+  - 0.16054361040764656
+  averaged_feedback_count: 58
+  window_position_rms_mm: 1.6711069443220838e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.6925564523766706
+  source_all_sample_fit_residual_mm: 0.7562860620192315
+  source_sample_index_1based: 4
+- captured_at: '2026-08-31T15:49:48+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3750740000000002
+  - -0.025957999999999985
+  - 0.082925
+  flange_quaternion_xyzw:
+  - -0.06453800924170341
+  - 0.9875530291460748
+  - 0.11647090496280746
+  - 0.0837161172336287
+  averaged_feedback_count: 56
+  window_position_rms_mm: 2.2247786310271854e-13
+  window_rotation_rms_deg: 1.2074182697257333e-06
+  pivot_contact_residual_mm: 0.7895598917971922
+  source_all_sample_fit_residual_mm: 0.7582866756301535
+  source_sample_index_1based: 6
+- captured_at: '2026-08-31T15:50:01+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.41089499999999995
+  - 0.01910500000000001
+  - 0.07895500000000004
+  flange_quaternion_xyzw:
+  - 0.3974994020055446
+  - -0.8961498473763392
+  - 0.0750126344161463
+  - 0.18243569039677554
+  averaged_feedback_count: 57
+  window_position_rms_mm: 4.2914688736145975e-14
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.49903027573565295
+  source_all_sample_fit_residual_mm: 0.3370391698580528
+  source_sample_index_1based: 7
+- captured_at: '2026-08-31T15:50:13+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.38418800000000036
+  - 0.01367200000000001
+  - 0.08374
+  flange_quaternion_xyzw:
+  - 0.4393867031716841
+  - -0.8914569553571415
+  - 0.10654192347365736
+  - 0.0298770876061784
+  averaged_feedback_count: 57
+  window_position_rms_mm: 3.887174310464236e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.8037262503835663
+  source_all_sample_fit_residual_mm: 0.8000027070678878
+  source_sample_index_1based: 8
+- captured_at: '2026-08-31T15:50:47+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3570366315789472
+  - -0.000920789473684212
+  - 0.08056375438596486
+  flange_quaternion_xyzw:
+  - -0.37682939259758486
+  - 0.906324100177346
+  - -0.09182620340198296
+  - 0.1677622802689482
+  averaged_feedback_count: 57
+  window_position_rms_mm: 0.018218603488768664
+  window_rotation_rms_deg: 0.0492603499989559
+  pivot_contact_residual_mm: 0.662888124275648
+  source_all_sample_fit_residual_mm: 0.55555575653515
+  source_sample_index_1based: 10
+- captured_at: '2026-08-31T15:51:26+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3850809999999997
+  - -0.0048499999999999975
+  - 0.0854210000000001
+  flange_quaternion_xyzw:
+  - -0.2938093562459712
+  - 0.955669516539087
+  - -0.007919584581797425
+  - 0.017581738262395778
+  averaged_feedback_count: 57
+  window_position_rms_mm: 3.469544528776983e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.5504130783783581
+  source_all_sample_fit_residual_mm: 0.47120376384927676
+  source_sample_index_1based: 13
+- captured_at: '2026-08-31T15:51:39+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.4151950000000003
+  - -0.0047639999999999965
+  - 0.08186200000000007
+  flange_quaternion_xyzw:
+  - 0.29072927577070323
+  - -0.9431806088750829
+  - -0.04464765547479528
+  - 0.1545749465873251
+  averaged_feedback_count: 58
+  window_position_rms_mm: 3.4333503995172304e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.8455605414024698
+  source_all_sample_fit_residual_mm: 1.0161483653508274
+  source_sample_index_1based: 14
+- captured_at: '2026-08-31T15:51:57+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.4133530000000004
+  - -0.03524100000000003
+  - 0.07606799999999994
+  flange_quaternion_xyzw:
+  - 0.15281578827355807
+  - -0.960757567379788
+  - -0.1969082066079609
+  - 0.12173491589203042
+  averaged_feedback_count: 57
+  window_position_rms_mm: 4.484050470211362e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.9131724268723772
+  source_all_sample_fit_residual_mm: 1.0372958237485717
+  source_sample_index_1based: 15
+- captured_at: '2026-08-31T15:52:23+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.36011299999999974
+  - -0.017889000000000016
+  - 0.08064800000000004
+  flange_quaternion_xyzw:
+  - -0.032161866765773595
+  - 0.9827729072754248
+  - 0.06045813633341037
+  - 0.17166199580175248
+  averaged_feedback_count: 57
+  window_position_rms_mm: 2.265790592267349e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.7715560322419235
+  source_all_sample_fit_residual_mm: 0.9939538000324742
+  source_sample_index_1based: 17
+- captured_at: '2026-08-31T15:52:40+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.3610010000000003
+  - -0.010750999999999998
+  - 0.08142100000000005
+  flange_quaternion_xyzw:
+  - -0.15679351934328659
+  - 0.972778108595024
+  - 0.004657875809655759
+  - 0.17057798194132798
+  averaged_feedback_count: 56
+  window_position_rms_mm: 3.376656067372904e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.6121217499856284
+  source_all_sample_fit_residual_mm: 0.660551302054508
+  source_sample_index_1based: 18
+- captured_at: '2026-08-31T15:53:09+08:00'
+  frame_id: base_link
+  flange_position_m:
+  - 0.36511199999999994
+  - 0.008776000000000004
+  - 0.0814370000000001
+  flange_quaternion_xyzw:
+  - -0.499982466186219
+  - 0.8503824971870132
+  - -0.141536019096108
+  - 0.08267222800162152
+  averaged_feedback_count: 57
+  window_position_rms_mm: 1.2423575550114722e-13
+  window_rotation_rms_deg: 0.0
+  pivot_contact_residual_mm: 0.7341155034056511
+  source_all_sample_fit_residual_mm: 0.8275245365915377
+  source_sample_index_1based: 20
 selection_decision:
-  accepted_solution: all_32_samples
-  reason: The balanced 12-sample candidate had lower pivot residuals but failed
-    the independent live RGB-D/probe validation. The all-sample solution passed
-    the same six distributed board points and is authoritative for this probe.
-  superseded_candidate: /home/radxa/piper_tcp_calibration/results/piper_tcp_sdk_20260822_181219_selected_12of32.yaml
+  accepted_solution: selected_12of20
+  reason: Balanced subset passed independent live RGB-D/probe validation on six distributed
+    chessboard points and is authoritative for this probe.
+  source_candidate: /home/radxa/piper_tcp_calibration/results/piper_tcp_sdk_20260831_new_probe_selected_12of20.yaml
+  selected_sample_indices_1based: *id001
+  excluded_source_sample_indices_1based:
+  - 1
+  - 3
+  - 5
+  - 9
+  - 11
+  - 12
+  - 16
+  - 19
 physical_validation:
   status: passed
   method: live_cached_rgbd_vs_calibrated_probe_tcp
-  validated_at: '2026-08-22T20:19:44+08:00'
-  comparison_file: /home/radxa/piper_eye_to_hand/live_validation_sessions_sdk/live_rgbd_probe_20260822_201221/comparison.yaml
-  corner_ids: [13, 19, 38, 46, 52, 71]
-  distance_rms_mm: 1.311937291023447
-  distance_median_mm: 1.301124505137782
-  distance_max_mm: 1.7969784715365278
-  axis_rms_mm: [0.5331448157190346, 0.6204734470887028, 1.0256455345331155]
-  acceptance_limits_mm: {distance_rms: 2.5, distance_max: 4.0}
+  validated_at: '2026-08-31T16:32:08+08:00'
+  comparison_file: /home/radxa/piper_eye_to_hand/live_validation_sessions_sdk/live_rgbd_probe_20260831_162340/comparison.yaml
+  corner_ids:
+  - 13
+  - 19
+  - 38
+  - 46
+  - 52
+  - 71
+  distance_rms_mm: 1.896442321398001
+  distance_median_mm: 1.517638253297271
+  distance_max_mm: 2.6721609364835706
+  axis_rms_mm:
+  - 1.5578863062973358
+  - 0.5341831764505309
+  - 0.9402829728533341
+  mean_probe_minus_rgbd_xyz_mm:
+  - -0.8900011162662942
+  - -0.1309890898356057
+  - 0.6048514185603697
+  acceptance_limits_mm:
+    distance_rms: 2.5
+    distance_max: 4.0
   passed: true
-samples:
-- captured_at: '2026-08-22T18:08:04+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3577553050847458
-  - 0.001522118644067798
-  - 0.07852683050847459
-  flange_quaternion_xyzw:
-  - -0.7721081368139748
-  - 0.6331811841657031
-  - 0.05156174120249201
-  - 0.016492420329887035
-  averaged_feedback_count: 59
-  window_position_rms_mm: 0.10388218416698064
-  window_rotation_rms_deg: 0.09213259327533602
-  pivot_contact_residual_mm: 1.0405705181194587
-- captured_at: '2026-08-22T18:08:12+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.374955
-  - -0.021203
-  - 0.07026900000000004
-  flange_quaternion_xyzw:
-  - -0.6689857188883634
-  - 0.7039211133759377
-  - 0.23623116100590086
-  - 0.03388233517342288
-  averaged_feedback_count: 58
-  window_position_rms_mm: 4.163336342344337e-14
-  window_rotation_rms_deg: 1.2074182697257336e-06
-  pivot_contact_residual_mm: 0.8340719926719178
-- captured_at: '2026-08-22T18:08:21+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3473140000000004
-  - -0.01765099999999998
-  - 0.07421200000000007
-  flange_quaternion_xyzw:
-  - -0.5878115158831744
-  - 0.7905404017303785
-  - 0.10132374387664725
-  - 0.13876957142657798
-  averaged_feedback_count: 56
-  window_position_rms_mm: 3.9527340757811485e-13
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 1.1756126349712661
-- captured_at: '2026-08-22T18:08:29+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.37171119642857103
-  - -0.019202696428571427
-  - 0.07159416071428579
-  flange_quaternion_xyzw:
-  - -0.6770033859893857
-  - 0.7055390874138981
-  - 0.20596863715242664
-  - 0.03818287573825268
-  averaged_feedback_count: 56
-  window_position_rms_mm: 0.05389510846856154
-  window_rotation_rms_deg: 0.033886586331322896
-  pivot_contact_residual_mm: 1.0688329615206813
-- captured_at: '2026-08-22T18:08:36+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3448460000000003
-  - -0.01583299999999999
-  - 0.07415299999999994
-  flange_quaternion_xyzw:
-  - -0.5893581335277396
-  - 0.7906110385159678
-  - 0.0894857548796454
-  - 0.13994097289579696
-  averaged_feedback_count: 57
-  window_position_rms_mm: 3.378215302006314e-13
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 0.39586704999802974
-- captured_at: '2026-08-22T18:08:42+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3853259999999995
-  - 0.009666999999999992
-  - 0.07161399999999994
-  flange_quaternion_xyzw:
-  - 0.7967575588238678
-  - -0.5670878328275589
-  - -0.16700351881403086
-  - 0.12529408214159693
-  averaged_feedback_count: 56
-  window_position_rms_mm: 5.027496796041326e-13
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 0.40438312435140167
-- captured_at: '2026-08-22T18:08:51+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.34386200000000006
-  - 0.008064999999999992
-  - 0.07740899999999995
-  flange_quaternion_xyzw:
-  - -0.801256440683058
-  - 0.5950558995360946
-  - -0.04272076275250637
-  - 0.04551405410475719
-  averaged_feedback_count: 57
-  window_position_rms_mm: 6.973502068242161e-14
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 1.7976644703542644
-- captured_at: '2026-08-22T18:09:01+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.31764639655172416
-  - 0.005851965517241377
-  - 0.069766
-  flange_quaternion_xyzw:
-  - -0.759173475274101
-  - 0.6023579357833949
-  - -0.19191049228691018
-  - 0.15489000803540362
-  averaged_feedback_count: 58
-  window_position_rms_mm: 0.005013448026830345
-  window_rotation_rms_deg: 0.056356850928867754
-  pivot_contact_residual_mm: 2.286938151562163
-- captured_at: '2026-08-22T18:09:11+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.36976499999999995
-  - 0.04279900000000002
-  - 0.06972099999999995
-  flange_quaternion_xyzw:
-  - 0.894646633414289
-  - -0.375003072238013
-  - -0.013009318280935754
-  - 0.2425094941860951
-  averaged_feedback_count: 57
-  window_position_rms_mm: 7.244417918960238e-14
-  window_rotation_rms_deg: 1.2074182697257333e-06
-  pivot_contact_residual_mm: 1.3333871659639234
-- captured_at: '2026-08-22T18:09:17+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3515569999999998
-  - 0.038461999999999996
-  - 0.07236399999999997
-  flange_quaternion_xyzw:
-  - 0.9309097407445338
-  - -0.30878000563317043
-  - 0.0727054292548503
-  - 0.18104110932324713
-  averaged_feedback_count: 56
-  window_position_rms_mm: 2.2377260456559047e-13
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 0.6696512797745587
-- captured_at: '2026-08-22T18:09:26+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.34315591379310334
-  - 0.036228793103448315
-  - 0.07265575862068968
-  flange_quaternion_xyzw:
-  - 0.9493092701588165
-  - -0.24340372905271304
-  - 0.1179704305034262
-  - 0.16015464963779488
-  averaged_feedback_count: 58
-  window_position_rms_mm: 0.07478575224998132
-  window_rotation_rms_deg: 0.0466131008305501
-  pivot_contact_residual_mm: 1.0212024571403233
-- captured_at: '2026-08-22T18:09:35+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.35858999999999963
-  - 0.024807000000000017
-  - 0.07694199999999993
-  flange_quaternion_xyzw:
-  - 0.8843874073057868
-  - -0.4551009862202613
-  - 0.02277090203652388
-  - 0.10111128602058757
-  averaged_feedback_count: 57
-  window_position_rms_mm: 3.4066011831660507e-13
-  window_rotation_rms_deg: 1.2074182697257333e-06
-  pivot_contact_residual_mm: 0.7510226405339369
-- captured_at: '2026-08-22T18:09:41+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3231119999999998
-  - 0.010683
-  - 0.07276099999999995
-  flange_quaternion_xyzw:
-  - -0.8736985026263075
-  - 0.43917583850407726
-  - -0.18821535077857834
-  - 0.091381021629688
-  averaged_feedback_count: 57
-  window_position_rms_mm: 2.2591401799415136e-13
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 1.4924693907426638
-- captured_at: '2026-08-22T18:09:52+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.33674999999999994
-  - 0.007695999999999994
-  - 0.07658800000000007
-  flange_quaternion_xyzw:
-  - -0.8023185151194032
-  - 0.5849824808516262
-  - -0.09213915667756545
-  - 0.07477214187128717
-  averaged_feedback_count: 56
-  window_position_rms_mm: 8.906837976986813e-14
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 0.725246732508647
-- captured_at: '2026-08-22T18:09:58+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.383368222222222
-  - -0.021239925925925912
-  - 0.06671764814814823
-  flange_quaternion_xyzw:
-  - 0.6819599895005067
-  - -0.6760913515713971
-  - -0.27894034622457575
-  - 0.00483117987081429
-  averaged_feedback_count: 54
-  window_position_rms_mm: 0.07225307270818439
-  window_rotation_rms_deg: 0.04559797336205431
-  pivot_contact_residual_mm: 1.217616976347948
-- captured_at: '2026-08-22T18:10:07+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3467040000000002
-  - -0.01594600000000001
-  - 0.07437799999999994
-  flange_quaternion_xyzw:
-  - -0.6027298135243917
-  - 0.780940420483412
-  - 0.0991104389240995
-  - 0.1304835332151765
-  averaged_feedback_count: 55
-  window_position_rms_mm: 2.2911487958381183e-13
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 0.8971965799725371
-- captured_at: '2026-08-22T18:10:15+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.331391
-  - 4.7999999999999994e-05
-  - 0.07456700000000004
-  flange_quaternion_xyzw:
-  - -0.6315654489922143
-  - 0.7571104622142687
-  - -0.05640960854034332
-  - 0.1572475364172186
-  averaged_feedback_count: 55
-  window_position_rms_mm: 4.163336397489711e-14
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 1.4119485403176397
-- captured_at: '2026-08-22T18:10:23+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3721169999999997
-  - 0.00433
-  - 0.07641099999999991
-  flange_quaternion_xyzw:
-  - 0.7926425143892923
-  - -0.59781476855931
-  - -0.10700143354402515
-  - 0.053721877243099084
-  averaged_feedback_count: 55
-  window_position_rms_mm: 2.897767167584095e-13
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 0.8749492138452309
-- captured_at: '2026-08-22T18:10:29+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.31871800000000017
-  - 0.006321000000000002
-  - 0.06967800000000005
-  flange_quaternion_xyzw:
-  - -0.760835213507443
-  - 0.6036149790056171
-  - -0.1845886310845588
-  - 0.1506843465044098
-  averaged_feedback_count: 56
-  window_position_rms_mm: 1.7556095795380163e-13
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 1.8305325014576381
-- captured_at: '2026-08-22T18:10:36+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.36256599999999994
-  - 0.03262199999999998
-  - 0.07434999999999994
-  flange_quaternion_xyzw:
-  - 0.8974327016756355
-  - -0.40902572152969874
-  - 0.012520376031884325
-  - 0.1647900035630179
-  averaged_feedback_count: 55
-  window_position_rms_mm: 8.12176708575559e-14
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 0.24516693767108877
-- captured_at: '2026-08-22T18:10:43+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.34910299999999983
-  - 0.030987000000000035
-  - 0.07537899999999995
-  flange_quaternion_xyzw:
-  - 0.9186581291354509
-  - -0.37060532500519455
-  - 0.07398804207841139
-  - 0.11508563976687357
-  averaged_feedback_count: 56
-  window_position_rms_mm: 1.7964232137956418e-13
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 1.8341600358103936
-- captured_at: '2026-08-22T18:10:48+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.35887500000000006
-  - 0.007070000000000004
-  - 0.07790799999999995
-  flange_quaternion_xyzw:
-  - 0.8020873801061151
-  - -0.5965170650603685
-  - -0.028387737327880757
-  - 0.004166789612632528
-  averaged_feedback_count: 57
-  window_position_rms_mm: 6.952433221959955e-14
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 1.2036834037559583
-- captured_at: '2026-08-22T18:10:52+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3322455272727274
-  - 0.004251272727272734
-  - 0.07518776363636355
-  flange_quaternion_xyzw:
-  - -0.7566722500146029
-  - 0.6367942549190989
-  - -0.0991547001136466
-  - 0.11003875865003597
-  averaged_feedback_count: 55
-  window_position_rms_mm: 0.08284054183732098
-  window_rotation_rms_deg: 0.05178945266546431
-  pivot_contact_residual_mm: 1.1846519080379636
-- captured_at: '2026-08-22T18:10:57+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3562049999999996
-  - -0.01645300000000002
-  - 0.07404399999999989
-  flange_quaternion_xyzw:
-  - -0.6398801892640468
-  - 0.7499267791081404
-  - 0.13662547117714274
-  - 0.09745075674165865
-  averaged_feedback_count: 56
-  window_position_rms_mm: 4.04663061721137e-13
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 0.9256453615408285
-- captured_at: '2026-08-22T18:11:02+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.335119
-  - -0.013692999999999988
-  - 0.07292299999999996
-  flange_quaternion_xyzw:
-  - -0.4983522437415148
-  - 0.8450187608330906
-  - 0.0674763037012602
-  - 0.18175610976449016
-  averaged_feedback_count: 58
-  window_position_rms_mm: 4.2914688736145975e-14
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 1.4118221015210264
-- captured_at: '2026-08-22T18:11:08+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3797560000000003
-  - -0.019897000000000026
-  - 0.0685889999999999
-  flange_quaternion_xyzw:
-  - -0.680985052416951
-  - 0.6863387405008001
-  - 0.25511883798204565
-  - 0.010624037798727169
-  averaged_feedback_count: 57
-  window_position_rms_mm: 3.480531475248531e-13
-  window_rotation_rms_deg: 1.7075472925031877e-06
-  pivot_contact_residual_mm: 0.40209484091624115
-- captured_at: '2026-08-22T18:11:13+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3789171379310349
-  - 0.012052689655172427
-  - 0.07445189655172414
-  flange_quaternion_xyzw:
-  - 0.8132324877201482
-  - -0.5583104288865858
-  - -0.1212955725248392
-  - 0.1105882905141738
-  averaged_feedback_count: 58
-  window_position_rms_mm: 0.08832841242958293
-  window_rotation_rms_deg: 0.060779825981759704
-  pivot_contact_residual_mm: 0.2706075390788278
-- captured_at: '2026-08-22T18:11:18+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.33846300000000046
-  - -0.01388800000000001
-  - 0.07427599999999993
-  flange_quaternion_xyzw:
-  - -0.5562575501474275
-  - 0.8133081700178527
-  - 0.05114999086256194
-  - 0.16276067375430023
-  averaged_feedback_count: 58
-  window_position_rms_mm: 5.045033986138504e-13
-  window_rotation_rms_deg: 1.2074182697257336e-06
-  pivot_contact_residual_mm: 1.390648283496221
-- captured_at: '2026-08-22T18:11:26+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.34133399999999986
-  - 0.003380999999999997
-  - 0.07700399999999999
-  flange_quaternion_xyzw:
-  - -0.7524083132503208
-  - 0.6512852810440813
-  - -0.04468088856638875
-  - 0.08782272510038237
-  averaged_feedback_count: 58
-  window_position_rms_mm: 1.119274788165421e-13
-  window_rotation_rms_deg: 1.2074182697257336e-06
-  pivot_contact_residual_mm: 1.4209880384851767
-- captured_at: '2026-08-22T18:11:36+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3792709999999996
-  - 0.0034599999999999982
-  - 0.07413099999999999
-  flange_quaternion_xyzw:
-  - 0.7794134407165623
-  - -0.603211752315061
-  - -0.15399565483336725
-  - 0.07025388666690356
-  averaged_feedback_count: 57
-  window_position_rms_mm: 3.888296669493419e-13
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 0.9004934348145308
-- captured_at: '2026-08-22T18:11:43+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.3329650000000001
-  - -0.02603700000000002
-  - 0.06812899999999991
-  flange_quaternion_xyzw:
-  - -0.37096241186112117
-  - 0.8908848789046329
-  - 0.1562725026898471
-  - 0.21045171994618958
-  averaged_feedback_count: 58
-  window_position_rms_mm: 1.403304445990231e-13
-  window_rotation_rms_deg: 0.0
-  pivot_contact_residual_mm: 0.8158886014285082
-- captured_at: '2026-08-22T18:11:49+08:00'
-  frame_id: base_link
-  flange_position_m:
-  - 0.36970633333333347
-  - -0.02344024561403512
-  - 0.07078480701754379
-  flange_quaternion_xyzw:
-  - -0.652842688435809
-  - 0.7206484129582714
-  - 0.22758778942160704
-  - 0.05163416662265722
-  averaged_feedback_count: 57
-  window_position_rms_mm: 0.03708456558484737
-  window_rotation_rms_deg: 0.02631328604948249
-  pivot_contact_residual_mm: 2.0817039332429026

@@ -51,6 +51,8 @@ SDK EndPoseCtrl 姿态单位: 0.001 degree
 - `depth_correction.yaml`：深度修正参数。
 - `tcp_offset_m_rad.yaml`：TCP 标定结果，核心字段是 `result.tcp_offset_m_rad`。
 
+更换探针后的 2026-08-31 六点物理验证原始数据和角点标注图保存在 `calibration_records/20260831_new_probe/`。
+
 当前 TCP 修正公式：
 
 ```text
@@ -525,9 +527,10 @@ web_control_panel/README.md
 - 本地和服务器代码可编译。
 - 服务器可通过 SDK 读取法兰反馈，并输出 TCP 修正后的探针尖端位姿。
 - 检测脚本在当前测试画面中使用 `--mask-mode depth` 和手动 ROI 可以跑通生成目标 JSON。
+- 2026-08-31 更换探针后已重新标定 TCP，并在棋盘上使用 6 个分布点完成独立 RGB-D/探针验证；RMS 为 `1.896 mm`，最大误差为 `2.672 mm`，通过 `RMS <= 2.5 mm`、`max <= 4.0 mm` 的验收条件。
 
 仍需现场确认：
 
 - 当前测试画面不是标准纸箱场景时，中缝语义准确性不能只看代码通过，需要看 overlay 图片确认红线是否落在胶带中缝。
-- TCP 标定文件状态为 `selected_calibration_candidate_requires_physical_validation`，真实切割前建议低速触点验证。
+- 当前探针 TCP 标定文件状态为 `calibrated_and_validated`；探针、相机或机械臂基座重新安装后必须再次标定，真实切割前仍应执行低速、受保护的试运行。
 - 真实运动前必须确认机械臂不在示教/录制状态，且 `err_code=0`。

@@ -1,0 +1,209 @@
+session_type: live_cached_rgbd_vs_calibrated_probe_tcp
+saved_at: '2026-08-31T16:32:08+08:00'
+method: RGB-D corner positions are cached with the arm clear; the camera is then closed
+  before manual probe touches are captured.
+inputs:
+  config: /home/radxa/piper_eye_to_hand/board_config_sdk.yaml
+  tcp_calibration: /home/radxa/piper_tcp_calibration/results/piper_tcp_sdk_20260831_new_probe_selected_12of20.yaml
+  extrinsics: /home/radxa/piper_eye_to_hand/results_sdk/eye_to_hand_20260821_145824/eye_to_hand_extrinsics.yaml
+  depth_correction: /home/radxa/piper_eye_to_hand/results_sdk/eye_to_hand_20260821_145824/orbbec_depth_bias_20260821_151128_plane.yaml
+  corner_ids:
+  - 13
+  - 19
+  - 38
+  - 46
+  - 52
+  - 71
+  camera_frames: 15
+camera_cache:
+- corner_id: 13
+  pixel_uv:
+  - 517.6882934570312
+  - 433.7632751464844
+  rgbd_position_base_m:
+  - 0.26321908105574743
+  - -0.11242939398025072
+  - -0.006214103400622117
+  camera_repeatability_rms_mm: 0.3749952606663155
+  raw_depth_median_mm: 701.0
+  corrected_depth_median_mm: 697.909047276741
+- corner_id: 19
+  pixel_uv:
+  - 519.2224731445312
+  - 249.99012756347656
+  rgbd_position_base_m:
+  - 0.26707747236152857
+  - 0.09839977352573495
+  - -0.0037785525492105565
+  camera_repeatability_rms_mm: 0.07742010289071757
+  raw_depth_median_mm: 706.0
+  corrected_depth_median_mm: 702.909047276741
+- corner_id: 38
+  pixel_uv:
+  - 579.5604248046875
+  - 341.5749816894531
+  rgbd_position_base_m:
+  - 0.3355811473545125
+  - -0.008302890946612768
+  - -0.004921706344705901
+  camera_repeatability_rms_mm: 0.36871787111017346
+  raw_depth_median_mm: 701.0
+  corrected_depth_median_mm: 697.909047276741
+- corner_id: 46
+  pixel_uv:
+  - 609.8508911132812
+  - 434.0797424316406
+  rgbd_position_base_m:
+  - 0.36892589899710393
+  - -0.11384676632803747
+  - -0.004833720931169294
+  camera_repeatability_rms_mm: 0.05034114529617277
+  raw_depth_median_mm: 696.0
+  corrected_depth_median_mm: 692.909047276741
+- corner_id: 52
+  pixel_uv:
+  - 610.599365234375
+  - 249.7589111328125
+  rgbd_position_base_m:
+  - 0.37250588057477857
+  - 0.0961536534287725
+  - -0.0034181233026761015
+  camera_repeatability_rms_mm: 0.03843680088609824
+  raw_depth_median_mm: 702.0
+  corrected_depth_median_mm: 698.909047276741
+- corner_id: 71
+  pixel_uv:
+  - 671.853759765625
+  - 341.70953369140625
+  rgbd_position_base_m:
+  - 0.44074274307090144
+  - -0.010164991349567304
+  - -0.005540568256186429
+  camera_repeatability_rms_mm: 0.36859038034585295
+  raw_depth_median_mm: 698.0
+  corrected_depth_median_mm: 694.909047276741
+samples:
+- sequence: 1
+  corner_id: 13
+  rgbd_position_base_m:
+  - 0.26321908105574743
+  - -0.11242939398025072
+  - -0.006214103400622117
+  probe_tip_position_base_m:
+  - 0.26489179697021825
+  - -0.11161969254354256
+  - -0.004293986444981773
+  error_probe_minus_rgbd_m:
+  - 0.0016727159144708237
+  - 0.0008097014367081518
+  - 0.0019201169556403441
+  error_distance_mm: 2.6721609364835706
+  captured_at: '2026-08-31T16:26:56+08:00'
+  averaged_feedback_count: 55
+  probe_window_position_rms_mm: 1.3877787807814457e-13
+  probe_window_rotation_rms_deg: 0.0
+- sequence: 2
+  corner_id: 19
+  rgbd_position_base_m:
+  - 0.26707747236152857
+  - 0.09839977352573495
+  - -0.0037785525492105565
+  probe_tip_position_base_m:
+  - 0.2655663800129066
+  - 0.09860830656606637
+  - -0.003394562366024312
+  error_probe_minus_rgbd_m:
+  - -0.0015110923486219563
+  - 0.00020853304033141562
+  - 0.00038399018318624467
+  error_distance_mm: 1.5730017723311978
+  captured_at: '2026-08-31T16:27:57+08:00'
+  averaged_feedback_count: 56
+  probe_window_position_rms_mm: 1.7554167342883506e-13
+  probe_window_rotation_rms_deg: 0.0
+- sequence: 3
+  corner_id: 38
+  rgbd_position_base_m:
+  - 0.3355811473545125
+  - -0.008302890946612768
+  - -0.004921706344705901
+  probe_tip_position_base_m:
+  - 0.3351759192823651
+  - -0.009100737169338544
+  - -0.004233353917415311
+  error_probe_minus_rgbd_m:
+  - -0.0004052280721473789
+  - -0.0007978462227257767
+  - 0.0006883524272905898
+  error_distance_mm: 1.1289807127364566
+  captured_at: '2026-08-31T16:28:44+08:00'
+  averaged_feedback_count: 55
+  probe_window_position_rms_mm: 0.2884900672637828
+  probe_window_rotation_rms_deg: 0.12937528639426746
+- sequence: 4
+  corner_id: 46
+  rgbd_position_base_m:
+  - 0.36892589899710393
+  - -0.11384676632803747
+  - -0.004833720931169294
+  probe_tip_position_base_m:
+  - 0.3675487246530943
+  - -0.11433812279629961
+  - -0.00484811001604382
+  error_probe_minus_rgbd_m:
+  - -0.0013771743440096351
+  - -0.0004913564682621357
+  - -1.4389084874525879e-05
+  error_distance_mm: 1.4622747342633442
+  captured_at: '2026-08-31T16:29:16+08:00'
+  averaged_feedback_count: 56
+  probe_window_position_rms_mm: 2.7894547678494883e-13
+  probe_window_rotation_rms_deg: 0.0
+- sequence: 5
+  corner_id: 52
+  rgbd_position_base_m:
+  - 0.37250588057477857
+  - 0.0961536534287725
+  - -0.0034181233026761015
+  probe_tip_position_base_m:
+  - 0.3711480300362182
+  - 0.09586136639789801
+  - -0.003718916295267105
+  error_probe_minus_rgbd_m:
+  - -0.0013578505385603568
+  - -0.0002922870308744857
+  - -0.00030079299259100356
+  error_distance_mm: 1.421149611363253
+  captured_at: '2026-08-31T16:30:37+08:00'
+  averaged_feedback_count: 56
+  probe_window_position_rms_mm: 1.716587549445839e-13
+  probe_window_rotation_rms_deg: 0.0
+- sequence: 6
+  corner_id: 71
+  rgbd_position_base_m:
+  - 0.44074274307090144
+  - -0.010164991349567304
+  - -0.005540568256186429
+  probe_tip_position_base_m:
+  - 0.4383813657621722
+  - -0.010387670643758107
+  - -0.004588737233475859
+  error_probe_minus_rgbd_m:
+  - -0.002361377308729262
+  - -0.0002226792941908036
+  - 0.0009518310227105697
+  error_distance_mm: 2.555713434256082
+  captured_at: '2026-08-31T16:31:02+08:00'
+  averaged_feedback_count: 56
+  probe_window_position_rms_mm: 1.1114420827879992e-13
+  probe_window_rotation_rms_deg: 0.0
+evaluation:
+  sample_count: 6
+  distance_rms_mm: 1.896442321398001
+  distance_median_mm: 1.517638253297271
+  distance_max_mm: 2.6721609364835706
+  axis_rms_mm:
+  - 1.5578863062973358
+  - 0.5341831764505309
+  - 0.9402829728533341
+  passed: true

@@ -1,5 +1,52 @@
 # 验证报告：piper_sdk_seam_probe_bundle_20260821
 
+## 2026-08-31 新探针 TCP 重新标定
+
+结论：通过。更换探针后重新采集 20 个枢轴接触姿态，从中选取 12 个平衡样本求解 TCP，并使用棋盘上 6 个分布点完成独立 RGB-D/探针物理验证。新 TCP 已成为当前探针的权威配置。
+
+### 当前 TCP
+
+```text
+tcp_offset_m_rad = [0.0014776104376773445,
+                    0.0009592381545213136,
+                    0.08428718645795262,
+                    0.0, 0.0, 0.0]
+status = calibrated_and_validated
+```
+
+### 枢轴标定质量
+
+```text
+选中样本（1-based） = 2, 4, 6, 7, 8, 10, 13, 14, 15, 17, 18, 20
+接触残差 RMS/median/max = 0.731 / 0.753 / 0.913 mm
+rank / condition = 6 / 7.376
+最大姿态旋转跨度 = 76.152 deg
+leave-one-out TCP spread RMS = 0.213 mm
+```
+
+### 6 点独立物理验证
+
+```text
+棋盘角点 ID = 13, 19, 38, 46, 52, 71
+距离误差 RMS/median/max = 1.896 / 1.518 / 2.672 mm
+XYZ 轴 RMS = [1.558, 0.534, 0.940] mm
+验收条件 = RMS <= 2.5 mm 且 max <= 4.0 mm
+结果 = PASS
+```
+
+本次验证采用“机械臂离开棋盘时缓存 RGB-D 点、关闭相机、再由操作者手动触碰角点”的流程；采集过程中未发送自动机械臂运动命令。仓库内对应记录：
+
+```text
+config/tcp_offset_m_rad.yaml
+config/calibration_bundle.yaml
+calibration_records/20260831_new_probe/comparison.yaml
+calibration_records/20260831_new_probe/touch_plan.png
+```
+
+以下情况会使本标定失效：探针更换或重新安装、相机移动或重新安装、机械臂基座相对相机移动、相机序列号或成像参数变化，以及显著超出深度修正的已验证距离范围。标定通过不代表允许无人值守运动，切割时仍须保留受保护的接近和接触逻辑。
+
+## 2026-08-21 原始项目验证记录
+
 验证时间：2026-08-21
 
 ## 结论

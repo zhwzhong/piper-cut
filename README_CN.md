@@ -18,3 +18,5 @@ cd /home/radxa/Desktop/piper_sdk_seam_probe_bundle_20260821
 ```
 
 真实运动必须显式加确认参数，默认都是 dry-run 或只读检查。
+
+当前配置已更新为 2026-08-31 新探针 TCP，并已通过 6 个棋盘分布点的独立 RGB-D/探针验证。详细指标和原始记录见 `VALIDATION_REPORT.md` 与 `calibration_records/20260831_new_probe/`。
