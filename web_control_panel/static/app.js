@@ -24,10 +24,11 @@ X, Y, W, H:
   ROI 区域，单位是像素。X/Y 是左上角坐标，W/H 是宽高。
   检测中线只在这个区域里找箱子，ROI 不准会直接影响检测结果。
 
-Z最小 mm:
-  全局 TCP 目标 Z 下限，默认 99 mm。
+固定Z mm:
+  全局 TCP 目标固定 Z，默认 99 mm。
   检测、手动校准、移动到 XYZ、回到点位、到起点/终点、分段、A-F 和方向点动都会使用同一个值。
-  如果某个待发送目标的 Z 小于这个值，后端会把实际发送的 Z 改为该最小值，并返回 z_clamped=true。
+  检测出的中线点和三线切割的 A/B/C/D/E/F 都只保留 X/Y，Z 统一改成这个固定值。
+  发送运动命令前，后端也会把目标 Z 强制设为这个固定值，并返回 z_clamped=true 表示 Z 被改写。
 
 分段 mm:
   勾选“启用分段”后，从起点到终点时的最大插值段长，默认 30 mm。
@@ -152,7 +153,7 @@ function roi() {
 function targetZMinMm() {
   const value = Number($("targetZMin").value || 99);
   if (!Number.isFinite(value)) {
-    throw new Error("Z最小值必须是数字，单位 mm");
+    throw new Error("固定Z必须是数字，单位 mm");
   }
   return value;
 }
@@ -398,7 +399,7 @@ function showCoords(data) {
       end_mm: endMm,
       start_m: block.start_m,
       end_m: block.end_m,
-      target_z_min: data.target.target_z_min,
+      target_fixed_z: data.target.target_fixed_z || data.target.target_z_min,
       length_mm: data.target.seam_length_mm,
       target_json: data.target_json,
       seam_pixels: data.seam_pixels,

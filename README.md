@@ -88,7 +88,7 @@ python 01_detect_seam_start_to_base.py
 | `--mask-mode` | `rgbd` | 分割方式，可选 `rgbd`、`cardboard`、`depth`。当前场景如果 RGB 分割不稳定，可用 `depth`。 |
 | `--output-root` | `outputs` | 输出根目录。 |
 | `--depth-correction-mode` | `auto` | 深度修正方式，可选 `off`、`auto`、`force`。 |
-| `--target-z-min-mm` | `99.0` | 生成起点/终点 TCP 目标时的 Z 下限，单位 mm。低于该值的目标 Z 会被提升到该值。 |
+| `--target-z-min-mm` | `99.0` | 生成起点/终点 TCP 目标时使用的固定 Z，单位 mm。检测得到的 X/Y 保留，Z 会统一改成该值。 |
 
 输出：
 
@@ -110,7 +110,7 @@ outputs/seam_run_YYYYMMDD_HHMMSS/
 }
 ```
 
-`start_m` 和 `end_m` 是 `base_link` 下 TCP 尖端接触目标点，单位是米，不是法兰坐标。默认会应用 `--target-z-min-mm 99` 的 Z 下限；原始未限制的转换结果保存在 `raw_probe_tip_contact_targets_base`。
+`start_m` 和 `end_m` 是 `base_link` 下 TCP 尖端接触目标点，单位是米，不是法兰坐标。默认会应用 `--target-z-min-mm 99` 的固定 Z；原始未改写的转换结果保存在 `raw_probe_tip_contact_targets_base`。
 
 ### 2. 获取当前 TCP 坐标和位姿
 

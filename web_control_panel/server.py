@@ -173,26 +173,25 @@ def parse_motion_mode(value: Any) -> str:
 def parse_target_z_min_mm(value: Any) -> float:
     if value is None or value == "":
         return float(STATE.get("target_z_min_mm", DEFAULT_TARGET_Z_MIN_MM))
-    z_min = float(value)
-    if not math.isfinite(z_min):
-        raise ValueError("target_z_min_mm must be finite")
-    if z_min < -150.0 or z_min > 500.0:
-        raise ValueError("target_z_min_mm must be within [-150, 500] mm")
-    STATE["target_z_min_mm"] = z_min
-    return z_min
+    fixed_z = float(value)
+    if not math.isfinite(fixed_z):
+        raise ValueError("fixed target Z must be finite")
+    if fixed_z < -150.0 or fixed_z > 500.0:
+        raise ValueError("fixed target Z must be within [-150, 500] mm")
+    STATE["target_z_min_mm"] = fixed_z
+    return fixed_z
 
 
 def clamp_xyz_z_min_mm(xyz_mm: list[float], target_z_min_mm: float | None = None) -> tuple[list[float], bool]:
-    z_min = parse_target_z_min_mm(target_z_min_mm)
-    clamped = [float(value) for value in xyz_mm]
-    if len(clamped) != 3:
+    fixed_z = parse_target_z_min_mm(target_z_min_mm)
+    adjusted = [float(value) for value in xyz_mm]
+    if len(adjusted) != 3:
         raise ValueError("xyz_mm must contain x/y/z")
-    if not all(math.isfinite(value) for value in clamped):
+    if not all(math.isfinite(value) for value in adjusted):
         raise ValueError("x/y/z must be finite numbers")
-    was_clamped = clamped[2] < z_min
-    if was_clamped:
-        clamped[2] = z_min
-    return clamped, was_clamped
+    z_adjusted = abs(adjusted[2] - fixed_z) > 1.0e-9
+    adjusted[2] = fixed_z
+    return adjusted, z_adjusted
 
 
 def parse_segment_mm(value: Any) -> float:
@@ -2103,7 +2102,7 @@ def continuous_jog_worker(
         time.sleep(0.2)
         require_command_ready(piper)
         index = {"x": 0, "y": 1, "z": 2}[axis]
-        target_z_min_m = float(target_z_min_mm) / 1000.0
+        fixed_z_m = float(target_z_min_mm) / 1000.0
         dt = 0.01
         move_mode = move_mode_code("moveL")
         sent = 0
@@ -2127,9 +2126,8 @@ def continuous_jog_worker(
             rpy_deg = [float(value) for value in feedback["rpy_deg"]]
             target_xyz_m = xyz_m[:]
             target_xyz_m[index] += direction * speed_mm_s * dt / 1000.0
-            z_clamped = target_xyz_m[2] < target_z_min_m
-            if z_clamped:
-                target_xyz_m[2] = target_z_min_m
+            z_clamped = abs(target_xyz_m[2] - fixed_z_m) > 1.0e-9
+            target_xyz_m[2] = fixed_z_m
             flange_target = flange_from_tip_target_m(target_xyz_m, rpy_deg, tcp_offset)
             validate_xyz_workspace(
                 "continuous_jog_tip",

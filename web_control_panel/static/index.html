@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PIPER ROI Control</title>
-    <link rel="stylesheet" href="/static/app.css?v=20260831-stream-stable" />
+    <link rel="stylesheet" href="/static/app.css?v=20260831-fixed-z" />
   </head>
   <body>
     <main class="app-shell">
@@ -19,7 +19,7 @@
             <label>Y <input id="roiY" type="number" value="150" /></label>
             <label>W <input id="roiW" type="number" value="400" /></label>
             <label>H <input id="roiH" type="number" value="400" /></label>
-            <label>Z最小 mm <input id="targetZMin" type="number" value="99" step="0.1" /></label>
+            <label>固定Z mm <input id="targetZMin" type="number" value="99" step="0.1" /></label>
             <select id="maskMode" title="mask mode">
               <option value="rgbd" selected>rgbd</option>
               <option value="depth">depth</option>
@@ -186,6 +186,6 @@
       </aside>
     </main>
 
-    <script src="/static/app.js?v=20260831-stream-stable"></script>
+    <script src="/static/app.js?v=20260831-fixed-z"></script>
   </body>
 </html>

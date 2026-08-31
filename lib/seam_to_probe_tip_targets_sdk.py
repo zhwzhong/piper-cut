@@ -418,16 +418,18 @@ def apply_tip_z_min(
     if z_min_mm is None:
         return start, end, {"enabled": False}
     if not math.isfinite(float(z_min_mm)):
-        raise ValueError("--target-z-min-mm must be finite")
+        raise ValueError("--target-z-min-mm fixed Z value must be finite")
     z_min_m = float(z_min_mm) * 0.001
     adjusted_start = np.asarray(start, dtype=np.float64).copy()
     adjusted_end = np.asarray(end, dtype=np.float64).copy()
     original_z_mm = [float(adjusted_start[2] * 1000.0), float(adjusted_end[2] * 1000.0)]
-    adjusted_start[2] = max(adjusted_start[2], z_min_m)
-    adjusted_end[2] = max(adjusted_end[2], z_min_m)
+    adjusted_start[2] = z_min_m
+    adjusted_end[2] = z_min_m
     adjusted_z_mm = [float(adjusted_start[2] * 1000.0), float(adjusted_end[2] * 1000.0)]
     return adjusted_start, adjusted_end, {
         "enabled": True,
+        "mode": "fixed_z",
+        "fixed_z_mm": float(z_min_mm),
         "z_min_mm": float(z_min_mm),
         "original_start_end_z_mm": original_z_mm,
         "adjusted_start_end_z_mm": adjusted_z_mm,
@@ -563,7 +565,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--target-z-min-mm",
         type=float,
-        help="Minimum Z for generated probe-tip start/end targets in base_link, in mm",
+        help="Fixed Z for generated probe-tip start/end targets in base_link, in mm",
     )
     orientation = parser.add_mutually_exclusive_group()
     orientation.add_argument(
@@ -730,6 +732,7 @@ def main() -> int:
         "camera_seam_line": camera_line,
         "raw_probe_tip_contact_targets_base": raw_tip_line,
         "target_z_min": target_z_min,
+        "target_fixed_z": target_z_min,
         "probe_tip_contact_targets_base": tip_line,
         "probe_tcp": {
             "convention": "p_base_tip = p_base_flange + R_base_flange @ t_flange_tip",

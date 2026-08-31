@@ -75,7 +75,7 @@ def main() -> int:
         "--target-z-min-mm",
         type=float,
         default=99.0,
-        help="Minimum Z for generated probe-tip start/end targets in base_link, in mm",
+        help="Fixed Z for generated probe-tip start/end targets in base_link, in mm",
     )
     args = parser.parse_args()
 
