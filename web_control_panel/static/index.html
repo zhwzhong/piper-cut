@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PIPER ROI Control</title>
-    <link rel="stylesheet" href="/static/app.css?v=20260901-freeze-camera-actions" />
+    <link rel="stylesheet" href="/static/app.css?v=20260901-box-off-default" />
   </head>
   <body>
     <main class="app-shell">
@@ -27,7 +27,7 @@
             </select>
             <label class="switch"><input id="streamToggle" type="checkbox" checked /> 实时视频</label>
             <label class="switch"><input id="showRoiToggle" type="checkbox" checked /> ROI</label>
-            <label class="switch"><input id="showBoxToggle" type="checkbox" checked /> 箱子</label>
+            <label class="switch"><input id="showBoxToggle" type="checkbox" /> 箱子</label>
             <label class="switch"><input id="showSeamToggle" type="checkbox" checked /> 中线</label>
             <select id="streamQuality" title="stream quality">
               <option value="smooth" selected>流畅</option>
@@ -164,6 +164,6 @@
       </aside>
     </main>
 
-    <script src="/static/app.js?v=20260901-freeze-camera-actions"></script>
+    <script src="/static/app.js?v=20260901-box-off-default"></script>
   </body>
 </html>
