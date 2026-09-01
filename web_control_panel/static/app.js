@@ -549,6 +549,14 @@ function showCoords(data) {
       stopped_at: data.stopped_at,
     }, null, 2);
     if (data.cut_points) updateCutPointSelect(data.cut_points);
+    return;
+  }
+  if (data.reset_state) {
+    $("coordsBox").textContent = JSON.stringify({
+      reset_state: data.reset_state,
+      seam_pixels: data.seam_pixels,
+      cut_points: data.cut_points,
+    }, null, 2);
   }
 }
 
@@ -604,6 +612,17 @@ function updateCutPointSelect(cutPoints) {
   if (cutPoints.some((point) => point.label === previous)) {
     select.value = previous;
   }
+}
+
+function clearMarkerUiState() {
+  state.lastImageUrl = null;
+  state.cutPoints = [];
+  state.pendingLineStartPx = null;
+  ["lineStartX", "lineStartY", "lineEndX", "lineEndY"].forEach((id) => {
+    $(id).value = "";
+  });
+  updateCutPointSelect([]);
+  setManualMode(null);
 }
 
 function setManualMode(mode) {
@@ -1099,6 +1118,21 @@ $("restoreBtn").addEventListener("click", () => {
     execute,
     confirm: execute ? "RESTORE_CONTROL_MODE" : "",
   }, "restore...");
+});
+
+$("resetInitialBtn").addEventListener("click", async () => {
+  const data = await post("/api/reset_initial_state", {
+    ...motionPayload(),
+  }, "reset initial...");
+  if (!data.ok) return;
+  clearMarkerUiState();
+  showCoords(data);
+  if (isStreamEnabled()) {
+    restartStreamSoon(500);
+  } else {
+    stopStream(true);
+  }
+  $("statusText").textContent = "initial state";
 });
 
 function jogPayload(button) {

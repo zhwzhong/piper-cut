@@ -71,6 +71,8 @@ STATE: dict[str, Any] = {
     "last_image_url": None,
     "last_seam_pixels": None,
     "last_box_pixels": None,
+    "last_cut_lines": None,
+    "last_cut_points": None,
     "last_validation_target": None,
     "last_validation_target_json": None,
     "last_log": "",
@@ -1484,6 +1486,66 @@ def restore_control(execute: bool, confirm: str) -> dict[str, Any]:
     return {"ok": result["returncode"] == 0, "result": result}
 
 
+def clear_cut_marker_state() -> dict[str, Any]:
+    cleared = {
+        "last_detection_dir": STATE.get("last_detection_dir"),
+        "last_target_json": STATE.get("last_target_json"),
+        "last_seam_pixels": STATE.get("last_seam_pixels"),
+        "last_box_pixels": STATE.get("last_box_pixels"),
+        "last_cut_lines": STATE.get("last_cut_lines"),
+        "last_cut_points": STATE.get("last_cut_points"),
+        "last_image_url": STATE.get("last_image_url"),
+    }
+    STATE["last_detection_dir"] = None
+    STATE["last_target_json"] = None
+    STATE["last_seam_pixels"] = None
+    STATE["last_box_pixels"] = None
+    STATE["last_cut_lines"] = None
+    STATE["last_cut_points"] = None
+    STATE["last_image_url"] = None
+    return {"ok": True, "cleared": cleared}
+
+
+def reset_initial_state(
+    execute: bool,
+    confirm: str,
+    speed: int,
+    motion_mode: str,
+    target_z_min_mm: float | None = None,
+) -> dict[str, Any]:
+    steps: list[dict[str, Any]] = []
+
+    def add_step(name: str, response: dict[str, Any]) -> bool:
+        steps.append({"name": name, **response})
+        return bool(response.get("ok"))
+
+    restore_confirm = CONFIRM_RESTORE if execute else ""
+    if not add_step("restore_sdk_control_mode", restore_control(execute, restore_confirm)):
+        return {"ok": False, "stopped_at": "restore_sdk_control_mode", "steps": steps}
+
+    if not add_step(
+        "move_point_1_pose",
+        move_named_pose("point_1", execute, confirm, speed, motion_mode, target_z_min_mm),
+    ):
+        return {"ok": False, "stopped_at": "move_point_1_pose", "steps": steps}
+
+    if not add_step("clear_cut_marker_state", clear_cut_marker_state()):
+        return {"ok": False, "stopped_at": "clear_cut_marker_state", "steps": steps}
+
+    return {
+        "ok": True,
+        "reset_state": "initial",
+        "execute": execute,
+        "motion_mode": motion_mode,
+        "target_z_min_mm": parse_target_z_min_mm(target_z_min_mm),
+        "cut_lines": [],
+        "cut_points": [],
+        "seam_pixels": None,
+        "box_pixels": None,
+        "steps": steps,
+    }
+
+
 def pose_slug(name: str) -> str:
     cleaned = re.sub(r"[^0-9A-Za-z_.\-\u4e00-\u9fff]+", "_", name.strip())
     cleaned = cleaned.strip("._-")
@@ -2748,7 +2810,15 @@ class Handler(BaseHTTPRequestHandler):
             elif parsed.path == "/api/read_pose":
                 response = read_pose()
             elif parsed.path == "/api/restore":
-                response = restore_control(bool(body.get("execute")), str(body.get("confirm", "")))
+                response = restore_control(bool_body(body, "execute"), str(body.get("confirm", "")))
+            elif parsed.path == "/api/reset_initial_state":
+                response = reset_initial_state(
+                    bool_body(body, "execute"),
+                    str(body.get("confirm", "")),
+                    int(body.get("speed_percent", 5)),
+                    parse_motion_mode(body.get("motion_mode")),
+                    parse_target_z_min_mm(body.get("target_z_min_mm")),
+                )
             elif parsed.path == "/api/save_far_pose":
                 response = save_far_pose()
             elif parsed.path == "/api/move_far_pose":
