@@ -218,7 +218,8 @@ function motionPayload() {
 function manualXyzPayload() {
   const x = Number($("targetX").value);
   const y = Number($("targetY").value);
-  const z = Number($("targetZ").value);
+  const z = targetZMinMm();
+  $("targetZ").value = z.toFixed(3);
   if (![x, y, z].every(Number.isFinite)) {
     throw new Error("请输入有效的 X/Y/Z，单位 mm");
   }
@@ -601,8 +602,12 @@ function showCoords(data) {
   }
   if (data.target_xyz_mm) {
     $("coordsBox").textContent = JSON.stringify({
-      jog_target_xyz_mm: data.target_xyz_mm,
-      jog_target_rpy_deg: data.target_rpy_deg,
+      requested_manual_xyz_mm: data.requested_manual_xyz_mm,
+      effective_target_xyz_mm: data.target_xyz_mm,
+      target_rpy_deg: data.target_rpy_deg,
+      fixed_z_mm: data.target_z_min_mm,
+      z_clamped: data.z_clamped,
+      motion_mode: data.motion_mode,
     }, null, 2);
     return;
   }
@@ -1146,16 +1151,35 @@ $("poseBtn").addEventListener("click", () => {
 });
 
 $("moveXyzBtn").addEventListener("click", () => {
-  try {
-    post("/api/move_xyz", {
-      ...manualXyzPayload(),
-      ...motionPayload(),
-    }, "move XYZ...");
-  } catch (error) {
+  moveManualXyzSequence().catch((error) => {
     $("statusText").textContent = "invalid XYZ";
     $("logBox").textContent = String(error);
-  }
+  });
 });
+
+async function moveManualXyzSequence() {
+  const xyz = manualXyzPayload();
+  const motion = motionPayload();
+  const steps = [];
+  if (motion.execute) {
+    if (!await runSequenceStep(steps, "restore_sdk_control_mode", "/api/restore", {
+      execute: true,
+      confirm: "RESTORE_CONTROL_MODE",
+    }, "restore...")) return;
+  }
+  const moved = await post("/api/move_xyz", {
+    ...xyz,
+    ...motion,
+  }, "move XYZ...");
+  steps.push({ name: "move_xyz", ...moved });
+  showLog({ steps });
+  if (!moved.ok) {
+    $("statusText").textContent = "move XYZ failed";
+    return;
+  }
+  showCoords(moved);
+  $("statusText").textContent = "move XYZ done";
+}
 
 $("savePoseBtn").addEventListener("click", () => {
   post("/api/save_named_pose", {

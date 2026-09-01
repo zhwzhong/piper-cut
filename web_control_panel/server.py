@@ -1822,7 +1822,7 @@ def move_manual_xyz(
         wait_after_send=1.0,
     )
     response["pose_before"] = pose_report["pose"]
-    response["target_xyz_mm"] = xyz
+    response["requested_manual_xyz_mm"] = xyz
     response["target_rpy_deg"] = rpy_deg
     return response
 
@@ -2857,7 +2857,7 @@ class Handler(BaseHTTPRequestHandler):
                         float(body.get("y_mm")),
                         float(body.get("z_mm")),
                     ],
-                    bool(body.get("execute")),
+                    bool_body(body, "execute"),
                     str(body.get("confirm", "")),
                     int(body.get("speed_percent", 5)),
                     parse_motion_mode(body.get("motion_mode")),
