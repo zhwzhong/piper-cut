@@ -290,7 +290,7 @@ function showImage(url) {
   const image = $("cameraImage");
   state.lastImageUrl = url;
   image.dataset.stream = "0";
-  image.src = `${url}?t=${Date.now()}`;
+  image.src = url.startsWith("data:") ? url : `${url}?t=${Date.now()}`;
   image.style.display = "block";
   $("emptyImage").style.display = "none";
 }
@@ -342,10 +342,31 @@ function markStreamAlive() {
   state.streamRetryCount = 0;
 }
 
-function stopStream(showPlaceholder = false) {
+function freezeCurrentFrame() {
+  const image = $("cameraImage");
+  if (!image.complete || !image.naturalWidth || !image.naturalHeight) return false;
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const context = canvas.getContext("2d");
+    context.drawImage(image, 0, 0);
+    image.dataset.stream = "0";
+    image.src = canvas.toDataURL("image/jpeg", 0.72);
+    image.style.display = "block";
+    $("emptyImage").style.display = "none";
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function stopStream(showPlaceholder = false, keepCurrentFrame = false) {
   clearTimeout(state.streamTimer);
   state.stoppingStream = true;
   const image = $("cameraImage");
+  const frozen = keepCurrentFrame && freezeCurrentFrame();
+  if (frozen) return true;
   image.dataset.stream = "0";
   image.removeAttribute("src");
   image.src = "about:blank";
@@ -353,6 +374,7 @@ function stopStream(showPlaceholder = false) {
     image.style.display = "none";
     $("emptyImage").style.display = "block";
   }
+  return false;
 }
 
 function restartStreamSoon(delayMs = 900) {
@@ -625,7 +647,7 @@ async function post(path, payload, label) {
   const shouldStopStream = isStreamEnabled() && postUsesCamera(path);
   const shouldRestartStream = shouldStopStream && shouldRestartStreamAfterPost(path);
   if (shouldStopStream) {
-    stopStream();
+    stopStream(false, true);
     await new Promise((resolve) => setTimeout(resolve, 4500));
   }
   setBusy(true, label);
@@ -749,8 +771,8 @@ async function runOneClickSequence() {
 }
 
 async function buildThreeCutLinesWithAutoDetect() {
-  stopStream(false);
-  if (state.lastImageUrl) showImage(state.lastImageUrl);
+  const frozen = stopStream(false, true);
+  if (!frozen && state.lastImageUrl) showImage(state.lastImageUrl);
   const payload = {
     roi: roi(),
     target_z_min_mm: targetZMinMm(),
