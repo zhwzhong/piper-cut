@@ -14,6 +14,9 @@ const state = {
   jogRunning: false,
   jogTimer: null,
   jogKeepaliveTimer: null,
+  progressTimer: null,
+  progressStartedAt: 0,
+  progressValue: 0,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -284,6 +287,68 @@ function setBusy(value, text = "ready") {
     button.disabled = value;
   });
   $("statusText").textContent = text;
+}
+
+function progressLabelFor(path, label) {
+  if (path === "/api/detect") return "检测中线";
+  if (path === "/api/build_three_cut_lines") return "生成三线";
+  return label || "处理中";
+}
+
+function usesOperationProgress(path) {
+  return path === "/api/detect" || path === "/api/build_three_cut_lines";
+}
+
+function updateOperationProgress(value, label, detail = "") {
+  const progress = $("operationProgress");
+  const bar = $("progressBar");
+  const text = $("progressText");
+  const labelNode = $("progressLabel");
+  progress.hidden = false;
+  progress.classList.remove("failed");
+  state.progressValue = Math.max(0, Math.min(100, value));
+  bar.style.width = `${state.progressValue.toFixed(0)}%`;
+  labelNode.textContent = detail ? `${label} - ${detail}` : label;
+  text.textContent = `${state.progressValue.toFixed(0)}%`;
+}
+
+function startOperationProgress(path, label) {
+  if (!usesOperationProgress(path)) return false;
+  const title = progressLabelFor(path, label);
+  clearInterval(state.progressTimer);
+  state.progressStartedAt = Date.now();
+  state.progressValue = 8;
+  updateOperationProgress(state.progressValue, title, "正在执行");
+  state.progressTimer = setInterval(() => {
+    const elapsedS = Math.max(0, (Date.now() - state.progressStartedAt) / 1000);
+    const target = Math.min(92, 8 + elapsedS * 4.5);
+    const next = Math.max(state.progressValue + 0.4, target);
+    updateOperationProgress(next, title, `已用 ${elapsedS.toFixed(1)} s`);
+  }, 300);
+  return true;
+}
+
+function finishOperationProgress(ok) {
+  clearInterval(state.progressTimer);
+  state.progressTimer = null;
+  const progress = $("operationProgress");
+  if (progress.hidden) return;
+  if (!ok) {
+    progress.classList.add("failed");
+    $("progressText").textContent = "失败";
+    $("progressLabel").textContent = "执行失败，查看右侧输出";
+    setTimeout(() => {
+      progress.hidden = true;
+      progress.classList.remove("failed");
+    }, 2200);
+    return;
+  }
+  $("progressBar").style.width = "100%";
+  $("progressText").textContent = "100%";
+  $("progressLabel").textContent = "完成";
+  setTimeout(() => {
+    progress.hidden = true;
+  }, 900);
 }
 
 function showImage(url) {
@@ -672,21 +737,23 @@ function imagePixelFromClick(event) {
   return [Number(x.toFixed(3)), Number(y.toFixed(3))];
 }
 
-async function post(path, payload, label) {
+async function post(path, payload, label, options = {}) {
   const shouldStopStream = isStreamEnabled() && postUsesCamera(path);
   const shouldRestartStream = shouldStopStream && shouldRestartStreamAfterPost(path);
+  const hasProgress = !options.skipProgress && startOperationProgress(path, label);
+  let data = null;
+  setBusy(true, label);
   if (shouldStopStream) {
     stopStream(false, true);
     await new Promise((resolve) => setTimeout(resolve, 4500));
   }
-  setBusy(true, label);
   try {
     const response = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload || {}),
     });
-    const data = await response.json();
+    data = await response.json();
     if (data.image_url) showImage(data.image_url);
     if (data.overlay_url) showImage(data.overlay_url);
     if (data.saved_poses) updateSavedPoseSelect(data.saved_poses);
@@ -713,6 +780,9 @@ async function post(path, payload, label) {
     }
     return { ok: false, error: String(error) };
   } finally {
+    if (hasProgress) {
+      finishOperationProgress(Boolean(data?.ok));
+    }
     setBusy(false, $("statusText").textContent);
     if (shouldRestartStream) {
       restartStreamSoon(4500);
@@ -809,25 +879,34 @@ async function buildThreeCutLinesWithAutoDetect() {
     show_box: showBoxOverlay(),
     ...threeCutInsetPayload(),
   };
-  let data = await post("/api/build_three_cut_lines", payload, "building three lines...");
+  const hasProgress = startOperationProgress("/api/build_three_cut_lines", "生成三线");
+  let data = await post("/api/build_three_cut_lines", payload, "building three lines...", { skipProgress: true });
   if (data.ok) {
+    if (hasProgress) finishOperationProgress(true);
     if (isStreamEnabled()) restartStreamSoon(300);
     return data;
   }
   if (!String(data.error || "").includes("run seam detection")) {
+    if (hasProgress) finishOperationProgress(false);
     if (state.lastImageUrl) showImage(state.lastImageUrl);
     return data;
   }
+  updateOperationProgress(Math.max(state.progressValue, 35), "生成三线", "需要先检测中线");
   const detected = await post("/api/detect", {
     roi: roi(),
     mask_mode: $("maskMode").value,
     target_z_min_mm: targetZMinMm(),
     use_last_snapshot: false,
     show_box: showBoxOverlay(),
-  }, "detecting first...");
-  if (!detected.ok) return detected;
-  data = await post("/api/build_three_cut_lines", payload, "building three lines...");
+  }, "detecting first...", { skipProgress: true });
+  if (!detected.ok) {
+    if (hasProgress) finishOperationProgress(false);
+    return detected;
+  }
+  updateOperationProgress(Math.max(state.progressValue, 75), "生成三线", "正在生成 A-F 点");
+  data = await post("/api/build_three_cut_lines", payload, "building three lines...", { skipProgress: true });
   if (!data.ok && state.lastImageUrl) showImage(state.lastImageUrl);
+  if (hasProgress) finishOperationProgress(Boolean(data.ok));
   if (data.ok && isStreamEnabled()) restartStreamSoon(300);
   return data;
 }

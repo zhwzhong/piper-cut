@@ -178,6 +178,51 @@ pre {
   background: var(--bg);
 }
 
+.operation-progress {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 10px 12px;
+}
+
+.operation-progress[hidden] {
+  display: none;
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+#progressLabel {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.progress-track {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6edf5;
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--blue), #35a36b);
+  transition: width 260ms ease;
+}
+
+.operation-progress.failed .progress-bar {
+  background: var(--red);
+}
+
 .control-groups {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
