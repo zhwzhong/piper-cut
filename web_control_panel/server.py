@@ -461,7 +461,12 @@ def draw_box_overlay(image: Any, box_pixels: dict[str, Any] | None) -> None:
     )
 
 
-def annotate_roi(color_path: Path, roi: list[int], include_detection_overlay: bool = True) -> Path:
+def annotate_roi(
+    color_path: Path,
+    roi: list[int],
+    include_detection_overlay: bool = True,
+    show_box: bool = False,
+) -> Path:
     import cv2
 
     image = cv2.imread(str(color_path))
@@ -470,7 +475,8 @@ def annotate_roi(color_path: Path, roi: list[int], include_detection_overlay: bo
 
     draw_roi_overlay(image, roi)
     if include_detection_overlay:
-        draw_box_overlay(image, STATE.get("last_box_pixels"))
+        if show_box:
+            draw_box_overlay(image, STATE.get("last_box_pixels"))
         draw_seam_overlay(image, STATE.get("last_seam_pixels"))
 
     x, y, w, h = roi
@@ -478,7 +484,11 @@ def annotate_roi(color_path: Path, roi: list[int], include_detection_overlay: bo
     return write_jpeg(image, output)
 
 
-def capture_snapshot(roi: list[int], include_detection_overlay: bool = True) -> dict[str, Any]:
+def capture_snapshot(
+    roi: list[int],
+    include_detection_overlay: bool = True,
+    show_box: bool = False,
+) -> dict[str, Any]:
     ensure_dirs()
     before = {path.resolve() for path in CAPTURES.glob("snapshot_*")}
     acquire_camera_for_command()
@@ -501,7 +511,7 @@ def capture_snapshot(roi: list[int], include_detection_overlay: bool = True) -> 
     if result["returncode"] != 0:
         return {"ok": False, "result": result}
     snapshot = newest_dir(CAPTURES, "snapshot_", before)
-    annotated = annotate_roi(snapshot / "color.png", roi, include_detection_overlay)
+    annotated = annotate_roi(snapshot / "color.png", roi, include_detection_overlay, show_box)
     image_url = file_url(annotated)
     STATE["last_snapshot"] = str(snapshot)
     STATE["last_image_url"] = image_url
@@ -561,6 +571,7 @@ def detect_seam(
     mask_mode: str,
     use_last_snapshot: bool,
     target_z_min_mm: float,
+    show_box: bool = False,
 ) -> dict[str, Any]:
     if mask_mode not in {"rgbd", "cardboard", "depth"}:
         raise ValueError("mask_mode must be rgbd/cardboard/depth")
@@ -580,6 +591,8 @@ def detect_seam(
     ]
     if use_last_snapshot and STATE.get("last_snapshot"):
         command.extend(["--snapshot-dir", str(STATE["last_snapshot"])])
+    if show_box:
+        command.append("--draw-box")
     try:
         result = camera_command_result(command, timeout=90, attempts=5, retry_delay_s=8.0)
     finally:
@@ -750,6 +763,7 @@ def manual_seam_from_points(
     roi: list[int],
     target_z_min_mm: float,
     manual_adjustment: dict[str, Any],
+    show_box: bool = False,
 ) -> dict[str, Any]:
     import cv2
     import yaml
@@ -807,7 +821,8 @@ def manual_seam_from_points(
         "manual": True,
     }
     draw_roi_overlay(image, roi)
-    draw_box_overlay(image, STATE.get("last_box_pixels"))
+    if show_box:
+        draw_box_overlay(image, STATE.get("last_box_pixels"))
     draw_seam_overlay(image, manual_pixels)
     overlay = ARTIFACTS / f"manual_seam_overlay_{manual_id}.jpg"
     write_jpeg(image, overlay)
@@ -836,6 +851,7 @@ def manual_seam_anchor(
     point_px: list[float],
     roi: list[int],
     target_z_min_mm: float,
+    show_box: bool = False,
 ) -> dict[str, Any]:
     if anchor not in {"start", "end"}:
         raise ValueError("anchor must be start/end")
@@ -870,15 +886,26 @@ def manual_seam_anchor(
             "old_end_px": old_end,
             "delta_px": [new_start[0] - old_start[0], new_start[1] - old_start[1]],
         },
+        show_box,
     )
 
 
-def manual_seam_start(start_px: list[float], roi: list[int], target_z_min_mm: float) -> dict[str, Any]:
-    return manual_seam_anchor("start", start_px, roi, target_z_min_mm)
+def manual_seam_start(
+    start_px: list[float],
+    roi: list[int],
+    target_z_min_mm: float,
+    show_box: bool = False,
+) -> dict[str, Any]:
+    return manual_seam_anchor("start", start_px, roi, target_z_min_mm, show_box)
 
 
-def manual_seam_end(end_px: list[float], roi: list[int], target_z_min_mm: float) -> dict[str, Any]:
-    return manual_seam_anchor("end", end_px, roi, target_z_min_mm)
+def manual_seam_end(
+    end_px: list[float],
+    roi: list[int],
+    target_z_min_mm: float,
+    show_box: bool = False,
+) -> dict[str, Any]:
+    return manual_seam_anchor("end", end_px, roi, target_z_min_mm, show_box)
 
 
 def manual_seam_line(
@@ -886,6 +913,7 @@ def manual_seam_line(
     end_px: list[float],
     roi: list[int],
     target_z_min_mm: float,
+    show_box: bool = False,
 ) -> dict[str, Any]:
     seam_pixels = None
     detection_dir_value = STATE.get("last_detection_dir")
@@ -895,7 +923,7 @@ def manual_seam_line(
     if seam_pixels:
         adjustment["old_start_px"] = seam_pixels.get("start_px")
         adjustment["old_end_px"] = seam_pixels.get("end_px")
-    return manual_seam_from_points(start_px, end_px, roi, target_z_min_mm, adjustment)
+    return manual_seam_from_points(start_px, end_px, roi, target_z_min_mm, adjustment, show_box)
 
 
 def clamp_pixel(point: list[float]) -> list[float]:
@@ -1107,6 +1135,7 @@ def build_three_cut_lines(
     target_z_min_mm: float,
     c_inset_px: float = 0.0,
     d_inset_px: float = 0.0,
+    show_box: bool = False,
 ) -> dict[str, Any]:
     import cv2
 
@@ -1153,6 +1182,7 @@ def build_three_cut_lines(
                     "c_inset_px": float(c_inset_px),
                     "d_inset_px": float(d_inset_px),
                 },
+                show_box,
             )
             if result.get("ok") or not should_retry_shorter(result):
                 break
@@ -1225,7 +1255,8 @@ def build_three_cut_lines(
         "lines": pixel_lines,
     }
     draw_roi_overlay(image, roi)
-    draw_box_overlay(image, STATE.get("last_box_pixels"))
+    if show_box:
+        draw_box_overlay(image, STATE.get("last_box_pixels"))
     draw_seam_overlay(image, seam_pixels)
     overlay = ARTIFACTS / f"three_cut_overlay_{now_id()}.jpg"
     write_jpeg(image, overlay)
@@ -2577,6 +2608,13 @@ def bool_query(query: dict[str, list[str]], key: str, default: bool) -> bool:
     return values[0].lower() in {"1", "true", "yes", "on"}
 
 
+def bool_body(body: dict[str, Any], key: str, default: bool = False) -> bool:
+    value = body.get(key, default)
+    if isinstance(value, str):
+        return value.lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
 def file_url(path: Path) -> str:
     return "/files/" + path.resolve().relative_to(ROOT).as_posix()
 
@@ -2657,26 +2695,30 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/capture":
                 response = capture_snapshot(
                     parse_roi(body.get("roi")),
-                    bool(body.get("include_detection_overlay", True)),
+                    bool_body(body, "include_detection_overlay", True),
+                    bool_body(body, "show_box", False),
                 )
             elif parsed.path == "/api/detect":
                 response = detect_seam(
                     parse_roi(body.get("roi")),
                     str(body.get("mask_mode", "rgbd")),
-                    bool(body.get("use_last_snapshot", True)),
+                    bool_body(body, "use_last_snapshot", True),
                     parse_target_z_min_mm(body.get("target_z_min_mm")),
+                    bool_body(body, "show_box", False),
                 )
             elif parsed.path == "/api/manual_seam_start":
                 response = manual_seam_start(
                     list(body.get("start_px", [])),
                     parse_roi(body.get("roi")),
                     parse_target_z_min_mm(body.get("target_z_min_mm")),
+                    bool_body(body, "show_box", False),
                 )
             elif parsed.path == "/api/manual_seam_end":
                 response = manual_seam_end(
                     list(body.get("end_px", [])),
                     parse_roi(body.get("roi")),
                     parse_target_z_min_mm(body.get("target_z_min_mm")),
+                    bool_body(body, "show_box", False),
                 )
             elif parsed.path == "/api/manual_seam_line":
                 response = manual_seam_line(
@@ -2684,6 +2726,7 @@ class Handler(BaseHTTPRequestHandler):
                     list(body.get("end_px", [])),
                     parse_roi(body.get("roi")),
                     parse_target_z_min_mm(body.get("target_z_min_mm")),
+                    bool_body(body, "show_box", False),
                 )
             elif parsed.path == "/api/build_three_cut_lines":
                 c_inset_px, d_inset_px = parse_three_cut_insets(body)
@@ -2693,6 +2736,7 @@ class Handler(BaseHTTPRequestHandler):
                     parse_target_z_min_mm(body.get("target_z_min_mm")),
                     c_inset_px,
                     d_inset_px,
+                    bool_body(body, "show_box", False),
                 )
             elif parsed.path == "/api/calibration_target_from_pixel":
                 response = calibration_target_from_pixel(
@@ -2874,7 +2918,7 @@ class Handler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query)
         roi = parse_roi(query.get("roi", [",".join(map(str, STATE["roi"]))])[0])
         show_roi = bool_query(query, "show_roi", True)
-        show_box = bool_query(query, "show_box", True)
+        show_box = bool_query(query, "show_box", False)
         show_seam = bool_query(query, "show_seam", False)
         quality = int(query.get("quality", [str(JPEG_QUALITY)])[0])
         quality = min(90, max(25, quality))

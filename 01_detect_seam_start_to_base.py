@@ -77,6 +77,11 @@ def main() -> int:
         default=99.0,
         help="Fixed Z for generated probe-tip start/end targets in base_link, in mm",
     )
+    parser.add_argument(
+        "--draw-box",
+        action="store_true",
+        help="Draw the detected box rectangle on the output overlay.",
+    )
     args = parser.parse_args()
 
     output_root = args.output_root.expanduser().resolve()
@@ -108,36 +113,36 @@ def main() -> int:
     result_dir = output_root / f"seam_run_{run_id}"
     result_dir.mkdir(parents=True, exist_ok=False)
     stem = f"{run_id}"
-    run(
-        [
-            sys.executable,
-            str(LIB / "detect_center_seam.py"),
-            "--rgb",
-            str(snapshot / "color.png"),
-            "--depth",
-            str(snapshot / "depth_mm.png"),
-            "--roi",
-            args.roi,
-            "--mask-mode",
-            args.mask_mode,
-            "--orientation-mode",
-            "edge",
-            "--seam-mode",
-            "line-model",
-            "--endpoint-mode",
-            "gradient",
-            "--draw-box",
-            "--draw-mask",
-            "--line-thickness",
-            "2",
-            "--endpoint-radius",
-            "4",
-            "--out-dir",
-            str(result_dir),
-            "--output-stem",
-            stem,
-        ]
-    )
+    detect_command = [
+        sys.executable,
+        str(LIB / "detect_center_seam.py"),
+        "--rgb",
+        str(snapshot / "color.png"),
+        "--depth",
+        str(snapshot / "depth_mm.png"),
+        "--roi",
+        args.roi,
+        "--mask-mode",
+        args.mask_mode,
+        "--orientation-mode",
+        "edge",
+        "--seam-mode",
+        "line-model",
+        "--endpoint-mode",
+        "gradient",
+        "--draw-mask",
+        "--line-thickness",
+        "2",
+        "--endpoint-radius",
+        "4",
+        "--out-dir",
+        str(result_dir),
+        "--output-stem",
+        stem,
+    ]
+    if args.draw_box:
+        detect_command.append("--draw-box")
+    run(detect_command)
     seam_yaml = result_dir / f"center_seam_result_{stem}.yaml"
     overlay = result_dir / f"center_seam_overlay_{stem}.png"
     target_json = result_dir / "probe_tip_targets_base.json"

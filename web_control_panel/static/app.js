@@ -321,6 +321,10 @@ function streamUrl() {
   return `/stream.mjpg?${params.toString()}`;
 }
 
+function showBoxOverlay() {
+  return $("showBoxToggle").checked;
+}
+
 function startStream() {
   if (!isStreamEnabled()) return;
   clearTimeout(state.streamTimer);
@@ -711,6 +715,7 @@ async function runOneClickSequence() {
     mask_mode: $("maskMode").value,
     target_z_min_mm: targetZMinMm(),
     use_last_snapshot: false,
+    show_box: showBoxOverlay(),
   }, "detecting...")) return;
 
   if (useThreeCut()) {
@@ -718,6 +723,7 @@ async function runOneClickSequence() {
       roi: roi(),
       target_z_min_mm: targetZMinMm(),
       side_cut_px: sideCutPx(),
+      show_box: showBoxOverlay(),
       ...threeCutInsetPayload(),
     }, "building three lines...")) return;
   }
@@ -777,6 +783,7 @@ async function buildThreeCutLinesWithAutoDetect() {
     roi: roi(),
     target_z_min_mm: targetZMinMm(),
     side_cut_px: sideCutPx(),
+    show_box: showBoxOverlay(),
     ...threeCutInsetPayload(),
   };
   let data = await post("/api/build_three_cut_lines", payload, "building three lines...");
@@ -792,6 +799,7 @@ async function buildThreeCutLinesWithAutoDetect() {
     mask_mode: $("maskMode").value,
     target_z_min_mm: targetZMinMm(),
     use_last_snapshot: false,
+    show_box: showBoxOverlay(),
   }, "detecting first...");
   if (!detected.ok) return detected;
   data = await post("/api/build_three_cut_lines", payload, "building three lines...");
@@ -858,7 +866,7 @@ $("runSequenceBtn").addEventListener("click", () => {
 });
 
 $("captureBtn").addEventListener("click", () => {
-  post("/api/capture", { roi: roi() }, "capturing...");
+  post("/api/capture", { roi: roi(), show_box: showBoxOverlay() }, "capturing...");
 });
 
 $("detectBtn").addEventListener("click", () => {
@@ -867,6 +875,7 @@ $("detectBtn").addEventListener("click", () => {
     mask_mode: $("maskMode").value,
     target_z_min_mm: targetZMinMm(),
     use_last_snapshot: false,
+    show_box: showBoxOverlay(),
   }, "detecting...");
 });
 
@@ -940,6 +949,7 @@ $("applyLineBtn").addEventListener("click", () => {
     post("/api/manual_seam_line", {
       roi: roi(),
       target_z_min_mm: targetZMinMm(),
+      show_box: showBoxOverlay(),
       ...linePixelsPayload(),
     }, "applying line...").then(() => {
       restartStreamSoon(900);
@@ -1246,7 +1256,7 @@ fetch("/api/status")
     } else if (data.state?.last_image_url) {
       showImage(data.state.last_image_url);
     } else {
-      post("/api/capture", { roi: roi() }, "capturing...");
+      post("/api/capture", { roi: roi(), show_box: showBoxOverlay() }, "capturing...");
     }
     post("/api/read_pose", {}, "reading TCP...");
   })
