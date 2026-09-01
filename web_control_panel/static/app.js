@@ -117,8 +117,9 @@ EXECUTE:
   点位文件保存在 config/saved_poses/。
 
 移动到 XYZ:
-  三个输入框默认显示当前 TCP 尖端坐标，单位 mm。
-  你可以修改 X/Y/Z 中的任意值，系统保持当前 TCP 姿态，只移动到新的 X/Y/Z。
+  三个输入框显示的是 base_link 下 TCP 尖端坐标，单位 mm。
+  X/Y 是实际目标坐标；Z 会自动同步为“固定Z mm”。
+  系统保持当前 TCP 姿态，只移动到新的 TCP XYZ。
 
 回到点位:
   移动到下拉框中选择的任意保存点位，默认 dry-run。
@@ -246,17 +247,8 @@ function fillLineInputsFromPixels(seamPixels) {
 
 function fillBaseLineInputs(target) {
   const block = target?.probe_tip_contact_targets_base || {};
-  const toMm = (mmValues, mValues) => {
-    if (Array.isArray(mmValues) && mmValues.length === 3) {
-      return mmValues.map(Number);
-    }
-    if (Array.isArray(mValues) && mValues.length === 3) {
-      return mValues.map((value) => Number(value) * 1000);
-    }
-    return null;
-  };
-  const start = toMm(block.start_mm, block.start_m);
-  const end = toMm(block.end_mm, block.end_m);
+  const start = toMmVector(block.start_mm, block.start_m);
+  const end = toMmVector(block.end_mm, block.end_m);
   if (start) {
     $("baseStartX").value = start[0].toFixed(3);
     $("baseStartY").value = start[1].toFixed(3);
@@ -267,6 +259,67 @@ function fillBaseLineInputs(target) {
     $("baseEndY").value = end[1].toFixed(3);
     $("baseEndZ").value = end[2].toFixed(3);
   }
+}
+
+function toMmVector(mmValues, mValues) {
+  if (Array.isArray(mmValues) && mmValues.length === 3) {
+    return mmValues.map(Number);
+  }
+  if (Array.isArray(mValues) && mValues.length === 3) {
+    return mValues.map((value) => Number(value) * 1000);
+  }
+  return null;
+}
+
+function roundVector(values, digits = 3) {
+  if (!Array.isArray(values)) return values;
+  return values.map((value) => Number(Number(value).toFixed(digits)));
+}
+
+function tcpFrameHeader(extra = {}) {
+  return {
+    frame_id: "base_link",
+    object: "tcp_probe_tip",
+    position_unit: "mm",
+    orientation_unit: "deg",
+    ...extra,
+  };
+}
+
+function tcpPoseSummary(pose) {
+  const corrected = pose?.corrected_probe_tip || pose;
+  return {
+    xyz_mm: roundVector(corrected?.xyz_mm),
+    rpy_deg: roundVector(corrected?.rpy_deg),
+  };
+}
+
+function targetLineSummary(target) {
+  const block = target?.probe_tip_contact_targets_base || {};
+  return {
+    start_xyz_mm: roundVector(toMmVector(block.start_mm, block.start_m)),
+    end_xyz_mm: roundVector(toMmVector(block.end_mm, block.end_m)),
+  };
+}
+
+function fixedZMm(target, fallback) {
+  const record = target?.target_fixed_z || target?.target_z_min;
+  if (record && typeof record === "object" && record.fixed_z_mm !== undefined) {
+    return Number(record.fixed_z_mm);
+  }
+  if (record && typeof record === "object" && record.z_min_mm !== undefined) {
+    return Number(record.z_min_mm);
+  }
+  return fallback;
+}
+
+function cutPointSummary(point) {
+  return {
+    label: point.label,
+    line_name: point.line_name,
+    point_name: point.point_name,
+    xyz_mm: roundVector(point.xyz_mm),
+  };
 }
 
 function linePixelsPayload() {
@@ -521,27 +574,18 @@ function showLog(data) {
 function showCoords(data) {
   if (data.target) {
     state.lastTarget = data.target;
-    const block = data.target.probe_tip_contact_targets_base || {};
-    const startMm = block.start_mm || block.start_m?.map((value) => Number(value) * 1000);
-    const endMm = block.end_mm || block.end_m?.map((value) => Number(value) * 1000);
     if (data.target_z_min_mm !== undefined) {
       $("targetZMin").value = Number(data.target_z_min_mm).toFixed(3);
     }
     $("coordsBox").textContent = JSON.stringify({
-      frame: block.frame_id || "base_link",
-      position_unit: "mm",
-      start_mm: startMm,
-      end_mm: endMm,
-      start_m: block.start_m,
-      end_m: block.end_m,
-      target_fixed_z: data.target.target_fixed_z || data.target.target_z_min,
+      ...tcpFrameHeader({
+        source: "vision_target",
+        cut_mode: data.cut_mode || "single_line",
+      }),
+      ...targetLineSummary(data.target),
+      target_fixed_z_mm: fixedZMm(data.target, data.target_z_min_mm),
       length_mm: data.target.seam_length_mm,
-      target_json: data.target_json,
-      seam_pixels: data.seam_pixels,
-      box_pixels: data.box_pixels,
-      cut_mode: data.cut_mode,
-      cut_lines: data.cut_lines,
-      cut_points: data.cut_points,
+      cut_points: Array.isArray(data.cut_points) ? data.cut_points.map(cutPointSummary) : undefined,
     }, null, 2);
     if (data.cut_points) updateCutPointSelect(data.cut_points);
     fillLineInputsFromPixels(data.seam_pixels);
@@ -551,14 +595,13 @@ function showCoords(data) {
   if (data.validation_error) {
     if (data.pose) fillTargetInputsFromPose(data.pose);
     $("coordsBox").textContent = JSON.stringify({
-      target_xyz_mm: data.validation_error.target_xyz_mm,
-      actual_tcp_xyz_mm: data.validation_error.actual_tcp_xyz_mm,
-      diff_actual_minus_target_mm: data.validation_error.diff_actual_minus_target_mm,
-      norm_3d_mm: data.validation_error.norm_3d_mm,
-      norm_xy_mm: data.validation_error.norm_xy_mm,
-      z_error_mm: data.validation_error.z_error_mm,
-      target_pixel_xy: data.validation_error.target_pixel_xy,
-      target_json: data.validation_error.target_json,
+      ...tcpFrameHeader({ source: "calibration_validation" }),
+      target_xyz_mm: roundVector(data.validation_error.target_xyz_mm),
+      actual_tcp_xyz_mm: roundVector(data.validation_error.actual_tcp_xyz_mm),
+      diff_actual_minus_target_mm: roundVector(data.validation_error.diff_actual_minus_target_mm),
+      error_norm_3d_mm: Number(data.validation_error.norm_3d_mm?.toFixed?.(3) ?? data.validation_error.norm_3d_mm),
+      error_norm_xy_mm: Number(data.validation_error.norm_xy_mm?.toFixed?.(3) ?? data.validation_error.norm_xy_mm),
+      z_error_mm: Number(data.validation_error.z_error_mm?.toFixed?.(3) ?? data.validation_error.z_error_mm),
     }, null, 2);
     return;
   }
@@ -566,45 +609,41 @@ function showCoords(data) {
     state.lastPose = data.pose;
     fillTargetInputsFromPose(data.pose);
     $("coordsBox").textContent = JSON.stringify({
-      tcp_pose: data.pose.corrected_probe_tip,
-      flange_pose: data.pose.raw_code_output_flange,
-      joint_feedback: data.pose.joint_feedback,
-      pose_json: data.pose_json,
+      ...tcpFrameHeader({ source: "current_feedback" }),
+      current_tcp_pose: tcpPoseSummary(data.pose),
     }, null, 2);
     return;
   }
   if (data.far_pose) {
     $("coordsBox").textContent = JSON.stringify({
-      far_pose: data.far_pose.corrected_probe_tip,
-      far_pose_json: data.far_pose_json,
+      ...tcpFrameHeader({ source: "saved_pose" }),
+      pose_name: "origin",
+      tcp_pose: tcpPoseSummary(data.far_pose),
     }, null, 2);
     return;
   }
   if (data.saved_pose) {
     fillTargetInputsFromPose(data.saved_pose);
     $("coordsBox").textContent = JSON.stringify({
+      ...tcpFrameHeader({ source: "saved_pose" }),
       pose_name: data.pose_name,
-      saved_pose: data.saved_pose.corrected_probe_tip,
-      joint_feedback: data.saved_pose.joint_feedback,
-      pose_json: data.pose_json,
+      tcp_pose: tcpPoseSummary(data.saved_pose),
     }, null, 2);
     return;
   }
   if (data.validation_target) {
     $("coordsBox").textContent = JSON.stringify({
-      pixel_xy: data.validation_target.pixel_xy,
-      base_xyz_mm: data.validation_target.base_xyz_mm,
-      camera_xyz_m: data.validation_target.camera_xyz_m,
-      depth: data.validation_target.depth,
-      target_json: data.validation_target_json,
+      ...tcpFrameHeader({ source: "selected_validation_target" }),
+      target_xyz_mm: roundVector(data.validation_target.base_xyz_mm),
     }, null, 2);
     return;
   }
   if (data.target_xyz_mm) {
     $("coordsBox").textContent = JSON.stringify({
-      requested_manual_xyz_mm: data.requested_manual_xyz_mm,
-      effective_target_xyz_mm: data.target_xyz_mm,
-      target_rpy_deg: data.target_rpy_deg,
+      ...tcpFrameHeader({ source: "manual_xyz_motion" }),
+      requested_tcp_xyz_mm: roundVector(data.requested_manual_xyz_mm),
+      effective_target_xyz_mm: roundVector(data.target_xyz_mm),
+      target_rpy_deg: roundVector(data.target_rpy_deg),
       fixed_z_mm: data.target_z_min_mm,
       z_clamped: data.z_clamped,
       motion_mode: data.motion_mode,
@@ -613,26 +652,35 @@ function showCoords(data) {
   }
   if (data.cut_point) {
     $("coordsBox").textContent = JSON.stringify({
+      ...tcpFrameHeader({ source: "three_cut_point" }),
       cut_mode: data.cut_mode,
       point_label: data.point_label,
-      cut_point: data.cut_point,
-      cut_points: data.cut_points,
+      selected_point: cutPointSummary(data.cut_point),
+      cut_points: Array.isArray(data.cut_points) ? data.cut_points.map(cutPointSummary) : undefined,
     }, null, 2);
     if (data.cut_points) updateCutPointSelect(data.cut_points);
     return;
   }
   if (data.segmented_line) {
+    const line = data.segmented_line;
     $("coordsBox").textContent = JSON.stringify({
-      segmented_line: data.segmented_line,
+      ...tcpFrameHeader({ source: "segmented_motion" }),
+      start_xyz_mm: roundVector(line.start_xyz_mm),
+      end_xyz_mm: roundVector(line.end_xyz_mm),
+      target_z_min_mm: line.target_z_min_mm,
+      line_length_mm: Number(line.line_length_mm?.toFixed?.(3) ?? line.line_length_mm),
+      requested_segment_mm: line.requested_segment_mm,
+      segment_count: line.segment_count,
+      completed_segments: line.completed_segments,
       stopped_at: data.stopped_at,
     }, null, 2);
     return;
   }
   if (data.cut_lines) {
     $("coordsBox").textContent = JSON.stringify({
+      ...tcpFrameHeader({ source: "three_cut_lines" }),
       cut_mode: data.cut_mode,
-      cut_lines: data.cut_lines,
-      cut_points: data.cut_points,
+      cut_points: Array.isArray(data.cut_points) ? data.cut_points.map(cutPointSummary) : [],
       stopped_at: data.stopped_at,
     }, null, 2);
     if (data.cut_points) updateCutPointSelect(data.cut_points);
@@ -640,9 +688,9 @@ function showCoords(data) {
   }
   if (data.reset_state) {
     $("coordsBox").textContent = JSON.stringify({
+      ...tcpFrameHeader({ source: "reset_initial_state" }),
       reset_state: data.reset_state,
-      seam_pixels: data.seam_pixels,
-      cut_points: data.cut_points,
+      cut_points: [],
     }, null, 2);
   }
 }
@@ -666,7 +714,7 @@ function updateSavedPoseSelect(savedPoses) {
     const xyz = Array.isArray(pose.xyz_mm)
       ? pose.xyz_mm.map((value) => Number(value).toFixed(1)).join(", ")
       : "";
-    option.textContent = xyz ? `${pose.name} (${xyz} mm)` : pose.name;
+    option.textContent = xyz ? `${pose.name} (TCP base ${xyz} mm)` : pose.name;
     select.appendChild(option);
   });
   if (savedPoses.some((pose) => pose.name === previous)) {
@@ -693,7 +741,7 @@ function updateCutPointSelect(cutPoints) {
     const xyz = Array.isArray(point.xyz_mm)
       ? point.xyz_mm.map((value) => Number(value).toFixed(1)).join(", ")
       : "";
-    option.textContent = xyz ? `${point.label} (${xyz} mm)` : point.label;
+    option.textContent = xyz ? `${point.label} (TCP base ${xyz} mm)` : point.label;
     select.appendChild(option);
   });
   if (cutPoints.some((point) => point.label === previous)) {
