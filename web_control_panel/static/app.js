@@ -329,12 +329,14 @@ function startStream() {
   if (!isStreamEnabled()) return;
   clearTimeout(state.streamTimer);
   const image = $("cameraImage");
+  if (image.dataset.stream === "1" && image.src.includes("/stream.mjpg")) {
+    return;
+  }
   state.stoppingStream = false;
   image.dataset.stream = "1";
   image.style.display = "block";
   $("emptyImage").style.display = "none";
   $("statusText").textContent = "streaming";
-  image.removeAttribute("src");
   requestAnimationFrame(() => {
     if (image.dataset.stream === "1" && isStreamEnabled()) {
       image.src = streamUrl();
@@ -372,8 +374,12 @@ function stopStream(showPlaceholder = false, keepCurrentFrame = false) {
   const frozen = keepCurrentFrame && freezeCurrentFrame();
   if (frozen) return true;
   image.dataset.stream = "0";
-  image.removeAttribute("src");
-  image.src = "about:blank";
+  if (state.lastImageUrl) {
+    showImage(state.lastImageUrl);
+  } else if (showPlaceholder) {
+    image.removeAttribute("src");
+    image.src = "about:blank";
+  }
   if (showPlaceholder) {
     image.style.display = "none";
     $("emptyImage").style.display = "block";
@@ -383,7 +389,7 @@ function stopStream(showPlaceholder = false, keepCurrentFrame = false) {
 
 function restartStreamSoon(delayMs = 900) {
   clearTimeout(state.streamTimer);
-  stopStream();
+  stopStream(false, true);
   $("statusText").textContent = "restarting stream";
   state.streamTimer = setTimeout(() => {
     startStream();
@@ -796,8 +802,6 @@ async function runOneClickSequence() {
 }
 
 async function buildThreeCutLinesWithAutoDetect() {
-  const frozen = stopStream(false, true);
-  if (!frozen && state.lastImageUrl) showImage(state.lastImageUrl);
   const payload = {
     roi: roi(),
     target_z_min_mm: targetZMinMm(),
@@ -807,6 +811,7 @@ async function buildThreeCutLinesWithAutoDetect() {
   };
   let data = await post("/api/build_three_cut_lines", payload, "building three lines...");
   if (data.ok) {
+    if (isStreamEnabled()) restartStreamSoon(300);
     return data;
   }
   if (!String(data.error || "").includes("run seam detection")) {
@@ -823,6 +828,7 @@ async function buildThreeCutLinesWithAutoDetect() {
   if (!detected.ok) return detected;
   data = await post("/api/build_three_cut_lines", payload, "building three lines...");
   if (!data.ok && state.lastImageUrl) showImage(state.lastImageUrl);
+  if (data.ok && isStreamEnabled()) restartStreamSoon(300);
   return data;
 }
 
