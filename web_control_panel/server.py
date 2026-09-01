@@ -73,6 +73,7 @@ STATE: dict[str, Any] = {
     "last_box_pixels": None,
     "last_cut_lines": None,
     "last_cut_points": None,
+    "suppress_last_image_recovery": False,
     "last_validation_target": None,
     "last_validation_target_json": None,
     "last_log": "",
@@ -517,6 +518,7 @@ def capture_snapshot(
     image_url = file_url(annotated)
     STATE["last_snapshot"] = str(snapshot)
     STATE["last_image_url"] = image_url
+    STATE["suppress_last_image_recovery"] = False
     STATE["roi"] = roi[:]
     return {
         "ok": True,
@@ -565,6 +567,7 @@ def capture_stream_frame_bgr(roi: list[int], show_roi: bool, show_box: bool, sho
         draw_seam_overlay(image, STATE.get("last_seam_pixels"))
     STATE["last_snapshot"] = str(snapshot)
     STATE["last_image_url"] = file_url(snapshot / "color.png")
+    STATE["suppress_last_image_recovery"] = False
     return image
 
 
@@ -611,6 +614,7 @@ def detect_seam(
     STATE["last_detection_dir"] = str(detection_dir)
     STATE["last_target_json"] = str(target_json)
     STATE["last_image_url"] = overlay_url
+    STATE["suppress_last_image_recovery"] = False
     STATE["last_seam_pixels"] = read_seam_pixels(detection_dir)
     STATE["last_box_pixels"] = read_box_pixels(detection_dir)
     STATE["roi"] = roi[:]
@@ -832,6 +836,7 @@ def manual_seam_from_points(
     STATE["last_target_json"] = str(target_json)
     STATE["last_seam_pixels"] = manual_pixels
     STATE["last_image_url"] = file_url(overlay)
+    STATE["suppress_last_image_recovery"] = False
     STATE["roi"] = roi[:]
     STATE["target_z_min_mm"] = float(target_z_min_mm)
     return {
@@ -1269,6 +1274,7 @@ def build_three_cut_lines(
     STATE["last_target_json"] = str(center_line["target_json"])
     STATE["last_seam_pixels"] = seam_pixels
     STATE["last_image_url"] = file_url(overlay)
+    STATE["suppress_last_image_recovery"] = False
     STATE["roi"] = roi[:]
     STATE["target_z_min_mm"] = float(target_z_min_mm)
     return {
@@ -1503,6 +1509,7 @@ def clear_cut_marker_state() -> dict[str, Any]:
     STATE["last_cut_lines"] = None
     STATE["last_cut_points"] = None
     STATE["last_image_url"] = None
+    STATE["suppress_last_image_recovery"] = True
     return {"ok": True, "cleared": cleared}
 
 
@@ -2709,6 +2716,8 @@ def recover_last_image_url() -> str | None:
     image_path = file_url_path(STATE.get("last_image_url"))
     if image_path is not None and image_path.is_file():
         return str(STATE["last_image_url"])
+    if STATE.get("suppress_last_image_recovery"):
+        return None
     image_path = latest_web_artifact_image()
     if image_path is None:
         return None

@@ -360,6 +360,17 @@ function showImage(url) {
   $("emptyImage").style.display = "none";
 }
 
+function clearPreviewImage(message = "No markers") {
+  const image = $("cameraImage");
+  state.lastImageUrl = null;
+  image.dataset.stream = "0";
+  image.removeAttribute("src");
+  image.src = "about:blank";
+  image.style.display = "none";
+  $("emptyImage").textContent = message;
+  $("emptyImage").style.display = "block";
+}
+
 function isStreamEnabled() {
   return $("streamToggle").checked;
 }
@@ -689,11 +700,13 @@ function clearMarkerUiState() {
   state.lastImageUrl = null;
   state.cutPoints = [];
   state.pendingLineStartPx = null;
+  $("showSeamToggle").checked = false;
   ["lineStartX", "lineStartY", "lineEndX", "lineEndY"].forEach((id) => {
     $(id).value = "";
   });
   updateCutPointSelect([]);
   setManualMode(null);
+  clearPreviewImage("markers cleared");
 }
 
 function setManualMode(mode) {
@@ -1213,7 +1226,7 @@ $("resetInitialBtn").addEventListener("click", async () => {
   clearMarkerUiState();
   showCoords(data);
   if (isStreamEnabled()) {
-    restartStreamSoon(500);
+    startStream();
   } else {
     stopStream(true);
   }
